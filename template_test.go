@@ -20,7 +20,7 @@ func TestParseTemplate(t *testing.T) {
 
 	t.Log(res)
 
-	if res, err = parseTemplate(fooTpl, 42); err == nil {
+	if _, err = parseTemplate(fooTpl, 42); err == nil {
 		t.Error("parse with number data should error")
 	}
 
