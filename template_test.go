@@ -32,7 +32,7 @@ func TestParseTemplate(t *testing.T) {
 </foo>
 	`
 
-	if res, err = parseTemplate(invalidTpl, data); err == nil {
+	if _, err = parseTemplate(invalidTpl, data); err == nil {
 		t.Error("parse with invalid template should error")
 	}
 }
