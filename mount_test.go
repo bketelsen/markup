@@ -81,7 +81,7 @@ type NonexistentChild struct {
 func (n *NonexistentChild) Render() string {
 	return `
 <div>
-    <Unkown />
+    <Unknown />
 </div>
 `
 }
