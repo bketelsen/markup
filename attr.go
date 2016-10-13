@@ -11,15 +11,15 @@ type Attr struct {
 	Value string
 }
 
-// AttrList represents a list of Attr.
-type AttrList []Attr
-
 func makeAttr(a xml.Attr) Attr {
 	return Attr{
 		Name:  a.Name.Local,
 		Value: a.Value,
 	}
 }
+
+// AttrList represents a list of Attr.
+type AttrList []Attr
 
 func makeAttrList(atrributes []xml.Attr) AttrList {
 	attrs := make(AttrList, len(atrributes))
@@ -29,6 +29,20 @@ func makeAttrList(atrributes []xml.Attr) AttrList {
 	}
 
 	return attrs
+}
+
+func (l AttrList) equals(other AttrList) bool {
+	if len(l) != len(other) {
+		return false
+	}
+
+	for i, attr := range l {
+		if attr != other[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func attrEventValue(v string) (string, bool) {

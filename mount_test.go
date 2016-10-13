@@ -142,6 +142,17 @@ func TestMountError(t *testing.T) {
 		t.Error("should error")
 	}
 
+	// already mounted
+	world := &World{}
+
+	if err := Mount(world, ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Mount(world, ctx); err == nil {
+		t.Error("should error")
+	}
+
 	// bad template
 	badTpl := &BadTemplate{}
 
@@ -164,7 +175,7 @@ func TestMountError(t *testing.T) {
 	}
 
 	// OnMount
-	world := &World{
+	world = &World{
 		Greeting:   "Maxoo",
 		MountError: true,
 	}

@@ -19,13 +19,17 @@ type Dismounter interface {
 	OnDismount() error
 }
 
-// Mount mounts a component.
-// It enable bidirectional communication between le component and the
+// Mount maps a component and its underlying elements.
+// It enable bidirectional communication between a component and the
 // underlying driver.
 func Mount(c Componer, ctx uid.ID) error {
 	compoVal := reflect.Indirect(reflect.ValueOf(c))
 	if compoVal.NumField() == 0 {
 		return fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
+	}
+
+	if _, ok := compoElements[c]; ok {
+		return fmt.Errorf("component already mounted: %T %+v", c, c)
 	}
 
 	rendered, err := parseTemplate(c.Render(), c)
@@ -99,6 +103,7 @@ func mountComponent(e *Element, ctx uid.ID) error {
 	return nil
 }
 
+// Dismount dismounts a component.
 func Dismount(c Componer) error {
 	elem, ok := compoElements[c]
 	if !ok {
