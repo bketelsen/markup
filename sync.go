@@ -2,10 +2,10 @@ package ml
 
 import "fmt"
 
-func Render(c Componer) ([]*Element, error) {
+func Sync(c Componer) ([]*Element, error) {
 	currentElem, ok := compoElements[c]
 	if !ok {
-		return nil, fmt.Errorf("can't render not mounted component: %T %+v", c, c)
+		return nil, fmt.Errorf("can't sync a component not mounted: %T %+v", c, c)
 	}
 
 	rendered, err := parseTemplate(c.Render(), c)
@@ -18,15 +18,15 @@ func Render(c Componer) ([]*Element, error) {
 		return nil, err
 	}
 
-	_, dirtyElems, err := mergeElements(currentElem, newElem)
+	_, dirtyElems, err := sync(currentElem, newElem)
 	return dirtyElems, err
 }
 
-func mergeElements(current *Element, new *Element) (bool, []*Element, error) {
+func sync(current *Element, new *Element) (bool, []*Element, error) {
 	if current.Name != new.Name || !current.Attributes.equals(new.Attributes) || len(current.Children) != len(new.Children) {
 		switch {
 		case current.tagType == htmlTag && new.tagType == htmlTag:
-			if err := mergeHTMLHTML(current, new); err != nil {
+			if err := syncHTMLHTML(current, new); err != nil {
 				return false, nil, err
 			}
 
@@ -47,8 +47,8 @@ func mergeElements(current *Element, new *Element) (bool, []*Element, error) {
 	var dirtyChildElems []*Element
 	isDirty := false
 
-	for i, c := range current.Children {
-		isParentDirty, dirtyElems, err := mergeElements(c, new.Children[i])
+	for i, child := range current.Children {
+		isParentDirty, dirtyElems, err := sync(child, new.Children[i])
 
 		if err != nil {
 			return false, nil, err
@@ -68,7 +68,7 @@ func mergeElements(current *Element, new *Element) (bool, []*Element, error) {
 	return false, dirtyChildElems, nil
 }
 
-func mergeHTMLHTML(current *Element, new *Element) error {
+func syncHTMLHTML(current *Element, new *Element) error {
 	current.Name = new.Name
 	current.Attributes = new.Attributes
 	current.tagType = new.tagType
