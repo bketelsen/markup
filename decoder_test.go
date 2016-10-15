@@ -12,7 +12,8 @@ const (
     <input type="text" onchange="@OnChange" />
     <button type="button">Click Me!</button>
 	<!-- Write your comments here -->
-	<Bar/>
+	<Bar />
+	<div />
     end
 </div>
     `
@@ -81,7 +82,7 @@ func TestDecoderDecodeInvalid(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	e, err := decodeString(fooXML)
+	e, err := decodeMarkup(fooXML)
 	if err != nil {
 		t.Fatal(err)
 	}

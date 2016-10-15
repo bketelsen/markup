@@ -2,91 +2,169 @@ package ml
 
 import "fmt"
 
-func Sync(c Componer) ([]*Element, error) {
-	currentElem, ok := compoElements[c]
-	if !ok {
-		return nil, fmt.Errorf("can't sync a component not mounted: %T %+v", c, c)
+// Sync synchronizes a component.
+// It check all the elements associated with the component and performs changes if required.
+// Returns the changed elements.
+func Sync(c Componer) (changed []*Element, err error) {
+	var rendered string
+	var currentElem *Element
+	var newElem *Element
+	var currentElemMounted bool
+
+	if currentElem, currentElemMounted = compoElements[c]; !currentElemMounted {
+		err = fmt.Errorf("can't sync a component not mounted: %T %+v", c, c)
+		return
 	}
 
-	rendered, err := parseTemplate(c.Render(), c)
-	if err != nil {
-		return nil, err
+	if rendered, err = renderMarkup(c.Render(), c); err != nil {
+		return
 	}
 
-	newElem, err := decodeString(rendered)
-	if err != nil {
-		return nil, err
+	if newElem, err = decodeMarkup(rendered); err != nil {
+		return
 	}
 
-	_, dirtyElems, err := sync(currentElem, newElem)
-	return dirtyElems, err
+	_, changed, err = sync(currentElem, newElem)
+	return
 }
 
-func sync(current *Element, new *Element) (bool, []*Element, error) {
+func sync(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+
 	if current.Name != new.Name || !current.Attributes.equals(new.Attributes) || len(current.Children) != len(new.Children) {
 		switch {
 		case current.tagType == htmlTag && new.tagType == htmlTag:
-			if err := syncHTMLHTML(current, new); err != nil {
-				return false, nil, err
-			}
+			return syncHTMLWithHTML(current, new)
 
-			return false, []*Element{current}, nil
+		case current.tagType == htmlTag && new.tagType != htmlTag:
+			return syncHTMLWithComponentOrText(current, new)
 
-		case current.tagType == htmlTag && new.tagType == componentTag:
-		case current.tagType == htmlTag && new.tagType == textTag:
 		case current.tagType == componentTag && new.tagType == componentTag:
-		case current.tagType == componentTag && new.tagType == htmlTag:
-		case current.tagType == componentTag && new.tagType == textTag:
-		case current.tagType == textTag && new.tagType == textTag:
-		case current.tagType == textTag && new.tagType == htmlTag:
-		case current.tagType == textTag && new.tagType == componentTag:
-		}
+			return syncComponentWithComponent(current, new)
 
+		case current.tagType == componentTag && new.tagType != componentTag:
+			return syncComponentWithTextOrHTML(current, new)
+
+		case current.tagType == textTag && new.tagType == textTag:
+			return syncTextWithText(current, new)
+
+		case current.tagType == textTag && new.tagType != textTag:
+			return syncTextWithHTMLOrComponent(current, new)
+		}
 	}
 
-	var dirtyChildElems []*Element
-	isDirty := false
+	currentChanged := false
+	requireChanged := false
+
+	var childChanged []*Element
 
 	for i, child := range current.Children {
-		isParentDirty, dirtyElems, err := sync(child, new.Children[i])
-
-		if err != nil {
-			return false, nil, err
+		if requireChanged, childChanged, err = sync(child, new.Children[i]); err != nil {
+			return
 		}
 
-		if !isDirty {
-			isDirty = isParentDirty
+		if currentChanged {
+			continue
 		}
 
-		dirtyChildElems = append(dirtyChildElems, dirtyElems...)
+		currentChanged = requireChanged
+		changed = append(changed, childChanged...)
 	}
 
-	if isDirty {
-		return false, []*Element{current}, nil
+	if currentChanged {
+		changed = []*Element{current}
 	}
 
-	return false, dirtyChildElems, nil
+	return
 }
 
-func syncHTMLHTML(current *Element, new *Element) error {
-	current.Name = new.Name
-	current.Attributes = new.Attributes
-	current.tagType = new.tagType
-
+func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
 	for _, c := range current.Children {
-		if err := dismount(c); err != nil {
-			return err
+		if err = dismount(c); err != nil {
+			return
 		}
 	}
 
 	for _, c := range new.Children {
 		c.Parent = current
 
-		if err := mount(c, current.Component, current.Context); err != nil {
-			return err
+		if err = mount(c, current.Component, current.Context); err != nil {
+			return
 		}
 	}
 
+	current.Name = new.Name
+	current.Attributes = new.Attributes
 	current.Children = new.Children
-	return nil
+
+	changed = []*Element{current}
+	return
+}
+
+func syncHTMLWithComponentOrText(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	if err = dismount(current); err != nil {
+		return
+	}
+
+	current.Name = new.Name
+	current.Attributes = new.Attributes
+	current.tagType = new.tagType
+	current.Children = nil
+
+	parentChanged = true
+	err = mount(current, current.Component, current.Context)
+	return
+}
+
+func syncComponentWithComponent(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	current.Attributes = new.Attributes
+
+	if current.Name == new.Name {
+		if err = updateComponentFields(current.Component, new.Attributes); err != nil {
+			return
+		}
+
+		changed, err = Sync(current.Component)
+		return
+	}
+
+	if err = dismount(current); err != nil {
+		return
+	}
+
+	current.Name = new.Name
+
+	parentChanged = true
+	err = mountComponent(current, current.Context)
+	return
+}
+
+func syncComponentWithTextOrHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	if err = dismount(current); err != nil {
+		return
+	}
+
+	current.Name = new.Name
+	current.Attributes = new.Attributes
+	current.tagType = new.tagType
+
+	parentChanged = true
+	err = mount(current, current.Parent.Component, current.Parent.Context)
+	return
+}
+
+func syncTextWithText(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	current.Attributes = new.Attributes
+	parentChanged = true
+	return
+}
+
+func syncTextWithHTMLOrComponent(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	current.Name = new.Name
+	current.Attributes = new.Attributes
+	current.tagType = new.tagType
+	current.Children = new.Children
+
+	parentChanged = true
+	err = mount(current, current.Parent.Component, current.Parent.Context)
+	return
 }

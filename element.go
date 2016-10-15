@@ -3,7 +3,6 @@ package ml
 import (
 	"encoding/xml"
 	"fmt"
-	"html"
 
 	"github.com/murlokswarm/uid"
 )
@@ -15,7 +14,22 @@ const (
 )
 
 var (
-	elements = map[uid.ID]*Element{}
+	elements         = map[uid.ID]*Element{}
+	voidElementNames = map[string]bool{
+		"area":    true,
+		"base":    true,
+		"br":      true,
+		"col":     true,
+		"command": true,
+		"embed":   true,
+		"hr":      true,
+		"img":     true,
+		"input":   true,
+		"link":    true,
+		"meta":    true,
+		"param":   true,
+		"source":  true,
+	}
 )
 
 type tagType uint8
@@ -73,7 +87,7 @@ func (e *Element) html(level int) (m string) {
 	indt := indent(level)
 
 	if e.tagType == textTag {
-		text := html.EscapeString(e.Attributes[0].Value)
+		text := e.Attributes[0].Value
 		m += fmt.Sprintf("%v%v", indt, text)
 		return
 	}
@@ -106,7 +120,12 @@ func (e *Element) html(level int) (m string) {
 	}
 
 	if len(e.Children) == 0 {
-		m += " />"
+		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || isComponentName(e.Name) {
+			m += " />"
+			return
+		}
+
+		m += fmt.Sprintf("></%v>", e.Name)
 		return
 	}
 
@@ -122,9 +141,9 @@ func (e *Element) html(level int) (m string) {
 
 func newElement(token xml.StartElement, parent *Element) *Element {
 	name := token.Name.Local
-
 	tagType := htmlTag
-	if IsComponentName(name) {
+
+	if isComponentName(name) {
 		tagType = componentTag
 	}
 

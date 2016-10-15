@@ -7,7 +7,7 @@ import (
 )
 
 func TestElementMarkup(t *testing.T) {
-	elem, err := decodeString(fooXML)
+	elem, err := decodeMarkup(fooXML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,7 +17,7 @@ func TestElementMarkup(t *testing.T) {
 }
 
 func TestElementHTML(t *testing.T) {
-	elem, err := decodeString(fooXML)
+	elem, err := decodeMarkup(fooXML)
 	if err != nil {
 		t.Fatal(err)
 	}

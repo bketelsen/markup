@@ -95,6 +95,16 @@ func (n *NoField) Render() string {
 `
 }
 
+type ComponentRoot struct {
+	Placebo bool
+}
+
+func (c *ComponentRoot) Render() string {
+	return `
+<Hello />
+`
+}
+
 func init() {
 	RegisterComponent("Hello", func() Componer {
 		return &Hello{}
@@ -201,6 +211,12 @@ func TestMountError(t *testing.T) {
 	if err := Mount(helloBis, ctx); err == nil {
 		t.Error("should error")
 	}
+
+	// component root
+	compoRoot := &ComponentRoot{}
+	if err := Mount(compoRoot, ctx); err == nil {
+		t.Error("should error")
+	}
 }
 
 func TestDismount(t *testing.T) {
@@ -233,8 +249,8 @@ func TestDismountError(t *testing.T) {
 	// not mounted
 	hello := &Hello{}
 
-	if err := Dismount(hello); err == nil {
-		t.Error("should error")
+	if err := Dismount(hello); err != nil {
+		t.Error(err)
 	}
 
 	// dismount error
