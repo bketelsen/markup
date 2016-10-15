@@ -59,6 +59,62 @@ func TestMakeAttrList(t *testing.T) {
 		t.Errorf("attrs[1].Value should be %v: %v", "42", value)
 	}
 }
+
+func TestAttrListEquals(t *testing.T) {
+	l1 := makeAttrList([]xml.Attr{
+		xml.Attr{
+			Name:  xml.Name{Local: "Width"},
+			Value: "42",
+		},
+		xml.Attr{
+			Name:  xml.Name{Local: "Height"},
+			Value: "21",
+		},
+	})
+
+	l1Bis := makeAttrList([]xml.Attr{
+		xml.Attr{
+			Name:  xml.Name{Local: "Width"},
+			Value: "42",
+		},
+		xml.Attr{
+			Name:  xml.Name{Local: "Height"},
+			Value: "21",
+		},
+	})
+
+	l2 := makeAttrList([]xml.Attr{
+		xml.Attr{
+			Name:  xml.Name{Local: "Width"},
+			Value: "42",
+		},
+		xml.Attr{
+			Name:  xml.Name{Local: "Height"},
+			Value: "42",
+		},
+	})
+
+	l3 := makeAttrList([]xml.Attr{
+		xml.Attr{
+			Name:  xml.Name{Local: "Height"},
+			Value: "21",
+		},
+	})
+
+	if !l1.equals(l1Bis) {
+		t.Error("l1 and l1Bis should be equals")
+	}
+
+	if l1.equals(l2) {
+		t.Error("l1 and l2 should not be equals")
+	}
+
+	if l1.equals(l3) {
+		t.Error("l1 and l3 should not be equals")
+	}
+
+}
+
 func TestAttrEventValue(t *testing.T) {
 	attrEvent := "@OnTest"
 

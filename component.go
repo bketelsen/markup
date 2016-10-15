@@ -28,7 +28,7 @@ type ComponentBuilder func() Componer
 // component should be built when name is found into a markup.
 // Should be called in a init() function in order to export a custom component.
 func RegisterComponent(name string, b ComponentBuilder) {
-	if !IsComponentName(name) {
+	if !isComponentName(name) {
 		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
 	}
 
@@ -39,8 +39,21 @@ func RegisterComponent(name string, b ComponentBuilder) {
 	compoBuilders[name] = b
 }
 
-// IsComponentName indicates whether v is a component name or not.
-func IsComponentName(v string) bool {
+// ComponentToHTML returns the HTML representation of the component.
+func ComponentToHTML(c Componer) (HTML string, err error) {
+	var rootElem *Element
+	var mounted bool
+
+	if rootElem, mounted = compoElements[c]; !mounted {
+		err = fmt.Errorf("%#v is not mounted", c)
+		return
+	}
+
+	HTML = rootElem.HTML()
+	return
+}
+
+func isComponentName(v string) bool {
 	if len(v) == 0 {
 		return false
 	}
@@ -48,25 +61,29 @@ func IsComponentName(v string) bool {
 	return v[0] >= 'A' && v[0] <= 'Z'
 }
 
-func createComponent(name string) (Componer, error) {
-	c, ok := compoBuilders[name]
-	if !ok {
-		return nil, fmt.Errorf("component %v is not registered", name)
+func createComponent(name string) (c Componer, err error) {
+	var registered bool
+	var builder ComponentBuilder
+
+	if builder, registered = compoBuilders[name]; !registered {
+		err = fmt.Errorf("component %v is not registered", name)
+		return
 	}
 
-	return c(), nil
+	c = builder()
+	return
 }
 
-func updateComponentFields(c Componer, attrs AttrList) error {
+func updateComponentFields(c Componer, attrs AttrList) (err error) {
 	compo := reflect.Indirect(reflect.ValueOf(c))
 
 	for _, attr := range attrs {
-		if err := updateComponentField(compo, attr); err != nil {
-			return err
+		if err = updateComponentField(compo, attr); err != nil {
+			return
 		}
 	}
 
-	return nil
+	return
 }
 
 func updateComponentField(compo reflect.Value, attr Attr) error {

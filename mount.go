@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/murlokswarm/log"
 	"github.com/murlokswarm/uid"
 )
 
@@ -19,41 +20,51 @@ type Dismounter interface {
 	OnDismount() error
 }
 
-// Mount mounts a component.
-// It enable bidirectional communication between le component and the
+// Mount maps a component and its underlying elements.
+// It enable bidirectional communication between a component and the
 // underlying driver.
-func Mount(c Componer, ctx uid.ID) error {
-	compoVal := reflect.Indirect(reflect.ValueOf(c))
-	if compoVal.NumField() == 0 {
+func Mount(c Componer, ctx uid.ID) (err error) {
+	var componentValue reflect.Value
+	var rootElem *Element
+	var rendered string
+	var mounted bool
+	var isMounter bool
+	var mounter Mounter
+
+	if componentValue = reflect.Indirect(reflect.ValueOf(c)); componentValue.NumField() == 0 {
 		return fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
 	}
 
-	rendered, err := parseTemplate(c.Render(), c)
-	if err != nil {
-		return err
+	if _, mounted = compoElements[c]; mounted {
+		return fmt.Errorf("component already mounted: %T %+v", c, c)
 	}
 
-	elem, err := decodeString(rendered)
-	if err != nil {
-		return err
+	if rendered, err = renderMarkup(c.Render(), c); err != nil {
+		return
 	}
 
-	compoElements[c] = elem
-
-	if err := mount(elem, c, ctx); err != nil {
-		return err
+	if rootElem, err = decodeMarkup(rendered); err != nil {
+		return
 	}
 
-	if mounter, ok := c.(Mounter); ok {
-		if err := mounter.OnMount(); err != nil {
-			return err
-		}
+	if rootElem.tagType != htmlTag {
+		return fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
 	}
 
-	return nil
+	compoElements[c] = rootElem
+
+	if err = mount(rootElem, c, ctx); err != nil {
+		return
+	}
+
+	if mounter, isMounter = c.(Mounter); isMounter {
+		err = mounter.OnMount()
+	}
+
+	return
 }
 
-func mount(e *Element, c Componer, ctx uid.ID) error {
+func mount(e *Element, c Componer, ctx uid.ID) (err error) {
 	switch e.tagType {
 	case htmlTag:
 		return mountElement(e, c, ctx)
@@ -62,65 +73,70 @@ func mount(e *Element, c Componer, ctx uid.ID) error {
 		return mountComponent(e, ctx)
 	}
 
-	return nil
+	return
 }
 
-func mountElement(e *Element, c Componer, ctx uid.ID) error {
+func mountElement(e *Element, c Componer, ctx uid.ID) (err error) {
 	e.ID = uid.Elem()
 	e.Context = ctx
 	e.Component = c
 	elements[e.ID] = e
 
 	for _, child := range e.Children {
-		if err := mount(child, c, ctx); err != nil {
-			return err
+		if err = mount(child, c, ctx); err != nil {
+			return
 		}
 	}
 
-	return nil
+	return
 }
 
-func mountComponent(e *Element, ctx uid.ID) error {
-	compo, err := createComponent(e.Name)
-	if err != nil {
-		return err
+func mountComponent(e *Element, ctx uid.ID) (err error) {
+	var c Componer
+
+	if c, err = createComponent(e.Name); err != nil {
+		return
 	}
 
-	if err := updateComponentFields(compo, e.Attributes); err != nil {
-		return err
+	if err = updateComponentFields(c, e.Attributes); err != nil {
+		return
 	}
 
-	if err := Mount(compo, ctx); err != nil {
-		return err
+	if err = Mount(c, ctx); err != nil {
+		return
 	}
 
-	e.Component = compo
-
-	return nil
+	e.Context = ctx
+	e.Component = c
+	return
 }
 
-func Dismount(c Componer) error {
-	elem, ok := compoElements[c]
-	if !ok {
-		return fmt.Errorf("%#v is already dismounted", c)
+// Dismount dismounts a component.
+func Dismount(c Componer) (err error) {
+	var rootElem *Element
+	var dismounter Dismounter
+	var mounted bool
+	var isDismounter bool
+
+	if rootElem, mounted = compoElements[c]; !mounted {
+		log.Warnf("%#v is already dismounted", c)
+		return
 	}
 
-	if err := dismount(elem); err != nil {
-		return err
+	if err = dismount(rootElem); err != nil {
+		return
 	}
 
 	delete(compoElements, c)
 
-	if dismounter, ok := c.(Dismounter); ok {
-		if err := dismounter.OnDismount(); err != nil {
-			return err
-		}
+	if dismounter, isDismounter = c.(Dismounter); isDismounter {
+		err = dismounter.OnDismount()
 	}
 
-	return nil
+	return
 }
 
-func dismount(e *Element) error {
+func dismount(e *Element) (err error) {
 	switch e.tagType {
 	case htmlTag:
 		return dismountElement(e)
@@ -129,16 +145,16 @@ func dismount(e *Element) error {
 		return Dismount(e.Component)
 	}
 
-	return nil
+	return
 }
 
-func dismountElement(e *Element) error {
+func dismountElement(e *Element) (err error) {
 	for _, child := range e.Children {
-		if err := dismount(child); err != nil {
-			return err
+		if err = dismount(child); err != nil {
+			return
 		}
 	}
 
 	delete(elements, e.ID)
-	return nil
+	return
 }

@@ -21,16 +21,18 @@ func newDecoder(r io.Reader) *decoder {
 	}
 }
 
-func (d *decoder) Decode() (*Element, error) {
-	if err := d.next(); err != nil {
-		return nil, err
+func (d *decoder) Decode() (rootElem *Element, err error) {
+	if err = d.next(); err != nil {
+		return
 	}
 
 	if d.root == nil {
-		return nil, errors.New("empty markup")
+		err = errors.New("empty markup")
+		return
 	}
 
-	return d.root, nil
+	rootElem = d.root
+	return
 }
 
 func (d *decoder) next() error {
@@ -80,12 +82,8 @@ func (d *decoder) next() error {
 	return d.next()
 }
 
-func decode(r io.Reader) (*Element, error) {
+func decodeMarkup(s string) (*Element, error) {
+	r := bytes.NewBufferString(s)
 	d := newDecoder(r)
 	return d.Decode()
-}
-
-func decodeString(s string) (*Element, error) {
-	r := bytes.NewBufferString(s)
-	return decode(r)
 }

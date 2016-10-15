@@ -3,9 +3,12 @@ package ml
 import (
 	"reflect"
 	"testing"
+
+	"github.com/murlokswarm/uid"
 )
 
 type Foo struct {
+	Placebo bool
 }
 
 func (f *Foo) Render() string {
@@ -53,16 +56,37 @@ func TestRegisterComponentPanic(t *testing.T) {
 	t.Error("should panic")
 }
 
+func TestComponentToHTML(t *testing.T) {
+	c := &Hello{}
+	ctx := uid.Context()
+
+	if _, err := ComponentToHTML(c); err == nil {
+		t.Error("should error")
+	}
+
+	if err := Mount(c, ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer Dismount(c)
+
+	HTML, err := ComponentToHTML(c)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(HTML)
+}
+
 func TestIsComponentName(t *testing.T) {
-	if name := "Foo"; !IsComponentName(name) {
+	if name := "Foo"; !isComponentName(name) {
 		t.Errorf("%v should be a component name", name)
 	}
 
-	if name := "foo"; IsComponentName(name) {
+	if name := "foo"; isComponentName(name) {
 		t.Errorf("%v should not be a component name", name)
 	}
 
-	if IsComponentName("") {
+	if isComponentName("") {
 		t.Error("empty string should not be a component name")
 	}
 }
