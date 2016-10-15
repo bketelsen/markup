@@ -5,9 +5,9 @@
 [![GoDoc](https://godoc.org/github.com/murlokswarm/ml?status.svg)](https://godoc.org/github.com/murlokswarm/ml)
 
 Package ml implements a markup language that allow to build user interfaces.
+
 Markups are based on HTML. They must be declared in the Render method when
 implementing the Componer interface.
-
 A markup must follow these rules:
 - Regular HTML elements must be in lowercase.
 - Component elements must have their first letter capitalized.
