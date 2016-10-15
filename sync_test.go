@@ -438,13 +438,6 @@ func TestSyncDismountError(t *testing.T) {
 	if _, err := Sync(c); err == nil {
 		t.Error("should error")
 	}
-
-	c.TestType = testComponent
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-
 }
 
 func TestSyncDismounComponentError(t *testing.T) {
