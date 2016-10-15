@@ -29,27 +29,8 @@ func Sync(c Componer) (changed []*Element, err error) {
 }
 
 func sync(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-
 	if current.Name != new.Name || !current.Attributes.equals(new.Attributes) || len(current.Children) != len(new.Children) {
-		switch {
-		case current.tagType == htmlTag && new.tagType == htmlTag:
-			return syncHTMLWithHTML(current, new)
-
-		case current.tagType == htmlTag && new.tagType != htmlTag:
-			return syncHTMLWithComponentOrText(current, new)
-
-		case current.tagType == componentTag && new.tagType == componentTag:
-			return syncComponentWithComponent(current, new)
-
-		case current.tagType == componentTag && new.tagType != componentTag:
-			return syncComponentWithTextOrHTML(current, new)
-
-		case current.tagType == textTag && new.tagType == textTag:
-			return syncTextWithText(current, new)
-
-		case current.tagType == textTag && new.tagType != textTag:
-			return syncTextWithHTMLOrComponent(current, new)
-		}
+		return syncElements(current, new)
 	}
 
 	currentChanged := false
@@ -75,6 +56,28 @@ func sync(current *Element, new *Element) (parentChanged bool, changed []*Elemen
 	}
 
 	return
+}
+
+func syncElements(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
+	switch {
+	case current.tagType == htmlTag && new.tagType != htmlTag:
+		return syncHTMLWithComponentOrText(current, new)
+
+	case current.tagType == componentTag && new.tagType == componentTag:
+		return syncComponentWithComponent(current, new)
+
+	case current.tagType == componentTag && new.tagType != componentTag:
+		return syncComponentWithTextOrHTML(current, new)
+
+	case current.tagType == textTag && new.tagType == textTag:
+		return syncTextWithText(current, new)
+
+	case current.tagType == textTag && new.tagType != textTag:
+		return syncTextWithHTMLOrComponent(current, new)
+
+	default:
+		return syncHTMLWithHTML(current, new)
+	}
 }
 
 func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
