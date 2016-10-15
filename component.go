@@ -26,7 +26,7 @@ type ComponentBuilder func() Componer
 
 // RegisterComponent registers a component builder. It allow to know which
 // component should be built when name is found into a markup.
-// Should be called in a init() function in order to export a custom component.
+// Should be called in a init() function, one time per component.
 func RegisterComponent(name string, b ComponentBuilder) {
 	if !isComponentName(name) {
 		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
@@ -40,6 +40,7 @@ func RegisterComponent(name string, b ComponentBuilder) {
 }
 
 // ComponentToHTML returns the HTML representation of the component.
+// returns an error if c is not mounted.
 func ComponentToHTML(c Componer) (HTML string, err error) {
 	var rootElem *Element
 	var mounted bool
