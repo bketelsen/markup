@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/murlokswarm/ml/badge.svg?branch=master)](https://coveralls.io/github/murlokswarm/ml?branch=master)
 [![GoDoc](https://godoc.org/github.com/murlokswarm/ml?status.svg)](https://godoc.org/github.com/murlokswarm/ml)
 
-Package ml implements a markup language that allow to build user interfaces.
+Package ml implements a markup language to build user interfaces.
 
 Markups are based on HTML. They must be declared in the Render method when
 implementing the Componer interface.
