@@ -12,6 +12,7 @@ A markup must follow these rules:
 - Regular HTML elements must be in lowercase.
 - Component elements must have their first letter capitalized.
 - Component root element must be a standard HTML tag.
+- Each element must have a closing tag.
 - HTML event handlers should start with '@'.
 - Template must follow the rules of https://golang.org/pkg/text/template.
 
