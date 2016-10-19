@@ -16,7 +16,8 @@ A markup must follow these rules:
 - HTML event handlers should start with '@'.
 - Template must follow the rules of https://golang.org/pkg/text/template.
 
-Example:
+## Examples
+Hello component:
 ```go 
 type Hello struct {
 	Name string
@@ -37,6 +38,8 @@ func (c *Hello) Render() string {
  	`
 }
 ```
+
+World component:
 ```go 
 type World struct {
 	Name string
