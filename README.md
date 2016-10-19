@@ -44,11 +44,11 @@ type World struct {
 func (c *World) Render() string {
 	return `
  <span>
-  {{if len .Name}}
-      {{.Name}}
-  {{else}}
-      World
-  {{end}}
+ 	{{if len .Name}}
+    	{{.Name}}
+  	{{else}}
+      	World
+  	{{end}}
  </span>
  	`
 }
