@@ -24,6 +24,7 @@ type Hello struct {
 
 func (c *Hello) OnInputChange(v string) string {
 	c.Name = v
+	app.Render(c)
 }
 
 func (c *Hello) Render() string {
