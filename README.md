@@ -30,9 +30,9 @@ func (c *Hello) OnInputChange(v string) string {
 func (c *Hello) Render() string {
 	return `
  <p>
-  Hello,
- <input onchange="@OnInputChange" />
- <World Name="{{.Name}}" />
+  	Hello,
+ 	<input onchange="@OnInputChange" />
+ 	<World Name="{{.Name}}" />
  </p>
  	`
 }
@@ -44,11 +44,11 @@ type World struct {
 func (c *World) Render() string {
 	return `
  <span>
-  {{if len .Name}}
-      {{.Name}}
-  {{else}}
-      World
-  {{end}}
+ 	{{if len .Name}}
+    	{{.Name}}
+  	{{else}}
+      	World
+  	{{end}}
  </span>
  	`
 }
