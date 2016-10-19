@@ -36,7 +36,8 @@ func (c *Hello) Render() string {
  </p>
  	`
 }
-
+```
+```go 
 type World struct {
 	Name string
 }
