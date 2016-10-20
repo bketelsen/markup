@@ -7,15 +7,14 @@ import (
 )
 
 const (
-	testHTML               TestType = 0
-	testComponent                   = 1
-	testComponentAlt                = 2
-	testText                        = 3
-	testChildMountError             = 4
-	testDismountError               = 5
-	testChildDismountError          = 6
-	testBadMarkup                   = 7
-	testBadTemplate                 = 8
+	testHTML            TestType = 0
+	testHTMLAlt                  = 1
+	testComponent                = 2
+	testComponentAlt             = 3
+	testText                     = 4
+	testChildMountError          = 5
+	testBadMarkup                = 6
+	testBadTemplate              = 7
 )
 
 type TestType uint8
@@ -42,38 +41,34 @@ func (c *SyncComponent) Render() string {
 		{{end}}
 
 		{{if eq .TestType 1}}
-			<SubSyncComponent Number="{{.Number}}" />
+			<div>
+				<p>Booboo</p>
+			</div>
 		{{end}}
 
 		{{if eq .TestType 2}}
-			<Hello />
+			<SubSyncComponent Number="{{.Number}}" />
 		{{end}}
 
 		{{if eq .TestType 3}}
-			{{.Text}}
+			<Hello />
 		{{end}}
 
 		{{if eq .TestType 4}}
+			{{.Text}}
+		{{end}}
+
+		{{if eq .TestType 5}}
 			<div>
 				<Hello MountError="true" />
 			</div>
 		{{end}}
 
-		{{if eq .TestType 5}}
-			<Hello DismountError="true" />
-		{{end}}
-
 		{{if eq .TestType 6}}
-			<div>
-				<Hello DismountError="true" />
-			</div>
-		{{end}}
-
-		{{if eq .TestType 7}}
 			<div></p>
 		{{end}}
 
-		{{if eq .TestType 8}}
+		{{if eq .TestType 7}}
 			<div>{{.Boo}}</div>
 		{{end}}
 		<!-- Test end -->
@@ -131,7 +126,7 @@ func TestSyncNoChange(t *testing.T) {
 
 func TestSyncHTMLToHTML(t *testing.T) {
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testHTML}
+	c := &SyncComponent{TestType: testHTMLAlt}
 
 	if err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
@@ -142,7 +137,7 @@ func TestSyncHTMLToHTML(t *testing.T) {
 		t.Log(HTML)
 	}
 
-	c.Input = "Hello"
+	c.TestType = testHTML
 
 	changed, err := Sync(c)
 	if err != nil {
@@ -402,70 +397,6 @@ func TestSyncChildMountError(t *testing.T) {
 	defer Dismount(c)
 
 	c.TestType = testChildMountError
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncChildDismountError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testChildDismountError, Input: "Hello"}
-
-	if err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testHTML
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncDismountError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testDismountError, Text: "Hello"}
-
-	if err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testText
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncDismounComponentError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testDismountError, Text: "Hello"}
-
-	if err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testComponent
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncDismounTextError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testChildDismountError, Text: "Hello"}
-
-	if err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testText
 
 	if _, err := Sync(c); err == nil {
 		t.Error("should error")
