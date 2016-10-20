@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/murlokswarm/log"
@@ -9,49 +8,40 @@ import (
 )
 
 type Hello struct {
-	MountError    bool
-	DismountError bool
-	Number        float64
+	Number     float64
+	MountError bool
 }
 
 func (h *Hello) Render() string {
 	return `
 <div>
     Hello,
-    <World Greeting="World" MountError="{{.MountError}}" DismountError="{{.DismountError}}" Number="{{.Number}}" />
+    <World Greeting="World" Number="{{.Number}}" MountError="{{.MountError}}" />
 </div>
     `
 }
 
 type World struct {
-	Greeting      string
-	MountError    bool
-	DismountError bool
-	Number        uint
+	Greeting   string
+	Number     uint
+	MountError bool
 }
 
 func (w *World) Render() string {
 	return `
 <input value="{{.Greeting}} {{.Number}}" />
+{{if .MountError}}
+	<BadMarkup />
+{{end}}
     `
 }
 
-func (w *World) OnMount() error {
-	if w.MountError {
-		return errors.New("simulating OnMount error")
-	}
-
+func (w *World) OnMount() {
 	log.Infof("%T is mounted: %+v", w, w)
-	return nil
 }
 
-func (w *World) OnDismount() error {
-	if w.DismountError {
-		return errors.New("simulating OnDismount error")
-	}
-
+func (w *World) OnDismount() {
 	log.Infof("%T is dismounted: %+v", w, w)
-	return nil
 }
 
 type BadTemplate struct {
@@ -184,16 +174,6 @@ func TestMountError(t *testing.T) {
 		t.Error("should error")
 	}
 
-	// OnMount
-	world = &World{
-		Greeting:   "Maxoo",
-		MountError: true,
-	}
-
-	if err := Mount(world, ctx); err == nil {
-		t.Error("should error")
-	}
-
 	// bad attibute
 	hello := &Hello{
 		Number: 42.99,
@@ -203,12 +183,12 @@ func TestMountError(t *testing.T) {
 		t.Error("should error")
 	}
 
-	// child error
-	helloBis := &Hello{
+	// mount error
+	hello = &Hello{
 		MountError: true,
 	}
 
-	if err := Mount(helloBis, ctx); err == nil {
+	if err := Mount(hello, ctx); err == nil {
 		t.Error("should error")
 	}
 
@@ -244,25 +224,7 @@ func TestDismount(t *testing.T) {
 }
 
 func TestDismountError(t *testing.T) {
-	ctx := uid.Context()
-
 	// not mounted
 	hello := &Hello{}
-
-	if err := Dismount(hello); err != nil {
-		t.Error(err)
-	}
-
-	// dismount error
-	helloBis := &Hello{
-		DismountError: true,
-	}
-
-	if err := Mount(helloBis, ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := Dismount(helloBis); err == nil {
-		t.Error("should error")
-	}
+	Dismount(hello)
 }

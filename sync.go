@@ -82,9 +82,7 @@ func syncElements(current *Element, new *Element) (parentChanged bool, changed [
 
 func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
 	for _, c := range current.Children {
-		if err = dismount(c); err != nil {
-			return
-		}
+		dismount(c)
 	}
 
 	for _, c := range new.Children {
@@ -104,9 +102,7 @@ func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, chang
 }
 
 func syncHTMLWithComponentOrText(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	if err = dismount(current); err != nil {
-		return
-	}
+	dismount(current)
 
 	current.Name = new.Name
 	current.Attributes = new.Attributes
@@ -130,10 +126,7 @@ func syncComponentWithComponent(current *Element, new *Element) (parentChanged b
 		return
 	}
 
-	if err = dismount(current); err != nil {
-		return
-	}
-
+	dismount(current)
 	current.Name = new.Name
 
 	parentChanged = true
@@ -142,9 +135,7 @@ func syncComponentWithComponent(current *Element, new *Element) (parentChanged b
 }
 
 func syncComponentWithTextOrHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	if err = dismount(current); err != nil {
-		return
-	}
+	dismount(current)
 
 	current.Name = new.Name
 	current.Attributes = new.Attributes

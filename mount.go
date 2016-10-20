@@ -11,13 +11,13 @@ import (
 // Mounter is the interface that wraps OnMount method.
 // OnMount si called when a component is mounted.
 type Mounter interface {
-	OnMount() error
+	OnMount()
 }
 
 // Dismounter is the interface that wraps OnDismount method.
 // OnDismount si called when a component is dismounted.
 type Dismounter interface {
-	OnDismount() error
+	OnDismount()
 }
 
 // Mount maps a component and its underlying elements.
@@ -58,7 +58,7 @@ func Mount(c Componer, ctx uid.ID) (err error) {
 	}
 
 	if mounter, isMounter = c.(Mounter); isMounter {
-		err = mounter.OnMount()
+		mounter.OnMount()
 	}
 
 	return
@@ -123,38 +123,30 @@ func Dismount(c Componer) (err error) {
 		return
 	}
 
-	if err = dismount(rootElem); err != nil {
-		return
-	}
-
+	dismount(rootElem)
 	delete(compoElements, c)
 
 	if dismounter, isDismounter = c.(Dismounter); isDismounter {
-		err = dismounter.OnDismount()
+		dismounter.OnDismount()
 	}
 
 	return
 }
 
-func dismount(e *Element) (err error) {
+func dismount(e *Element) {
 	switch e.tagType {
 	case htmlTag:
-		return dismountElement(e)
+		dismountElement(e)
 
 	case componentTag:
-		return Dismount(e.Component)
+		Dismount(e.Component)
 	}
-
-	return
 }
 
-func dismountElement(e *Element) (err error) {
+func dismountElement(e *Element) {
 	for _, child := range e.Children {
-		if err = dismount(child); err != nil {
-			return
-		}
+		dismount(child)
 	}
 
 	delete(elements, e.ID)
-	return
 }

@@ -10,9 +10,10 @@ Markups are based on HTML. They must be declared in the Render method when
 implementing the Componer interface.
 A markup must follow these rules:
 - Regular HTML elements must be in lowercase.
-- Component elements must have their first letter capitalized.
-- Component root element must be a standard HTML tag.
-- Each element must have a closing tag.
+- Root element of a component must be a standard HTML tag.
+- Component element must have its first letter capitalized.
+- Component element attribute must have its first letter capitalized.
+- Each element must have a closing tag (as in XHTML).
 - HTML event handlers should start with '@'.
 - Template must follow the rules of https://golang.org/pkg/text/template.
 
