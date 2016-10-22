@@ -109,7 +109,7 @@ func (e *Element) html(level int) (m string) {
 		attrValue := attr.Value
 
 		if attrEventVal, ok := attrEventValue(attr.Value); ok {
-			attrValue = fmt.Sprintf("CallEvent('%v', '%v', 'event')", e.ID, attrEventVal)
+			attrValue = fmt.Sprintf("CallEvent('%v', '%v', this, event)", e.ID, attrEventVal)
 		}
 
 		m += fmt.Sprintf(" %v=\"%v\"", attr.Name, attrValue)
