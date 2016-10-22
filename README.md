@@ -1,10 +1,10 @@
-# ml
-[![Build Status](https://travis-ci.org/murlokswarm/ml.svg?branch=master)](https://travis-ci.org/murlokswarm/ml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/murlokswarm/ml)](https://goreportcard.com/report/github.com/murlokswarm/ml)
-[![Coverage Status](https://coveralls.io/repos/github/murlokswarm/ml/badge.svg?branch=master)](https://coveralls.io/github/murlokswarm/ml?branch=master)
-[![GoDoc](https://godoc.org/github.com/murlokswarm/ml?status.svg)](https://godoc.org/github.com/murlokswarm/ml)
+# markup
+[![Build Status](https://travis-ci.org/murlokswarm/markup.svg?branch=master)](https://travis-ci.org/murlokswarm/markup)
+[![Go Report Card](https://goreportcard.com/badge/github.com/murlokswarm/markup)](https://goreportcard.com/report/github.com/murlokswarm/markup)
+[![Coverage Status](https://coveralls.io/repos/github/murlokswarm/markup/badge.svg?branch=master)](https://coveralls.io/github/murlokswarm/markup?branch=master)
+[![GoDoc](https://godoc.org/github.com/murlokswarm/markup?status.svg)](https://godoc.org/github.com/murlokswarm/markup)
 
-Package ml implements a markup language to build user interfaces.
+Package markup implements a markup language to build user interfaces.
 
 Markups are based on HTML. They must be declared in the Render method when
 implementing the Componer interface.

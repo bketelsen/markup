@@ -1,4 +1,4 @@
-package ml
+package markup
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ func Mount(c Componer, ctx uid.ID) (err error) {
 		return fmt.Errorf("component already mounted: %T %+v", c, c)
 	}
 
-	if rendered, err = renderMarkup(c.Render(), c); err != nil {
+	if rendered, err = render(c.Render(), c); err != nil {
 		return
 	}
 
