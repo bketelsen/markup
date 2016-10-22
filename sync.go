@@ -1,4 +1,4 @@
-package ml
+package markup
 
 import "fmt"
 
@@ -16,7 +16,7 @@ func Sync(c Componer) (changed []*Element, err error) {
 		return
 	}
 
-	if rendered, err = renderMarkup(c.Render(), c); err != nil {
+	if rendered, err = render(c.Render(), c); err != nil {
 		return
 	}
 

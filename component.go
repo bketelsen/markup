@@ -1,4 +1,4 @@
-package ml
+package markup
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ var (
 
 // Componer is the interface that describes a component.
 type Componer interface {
-	// Render should returns a ml markup.
+	// Render should returns a markup.
 	// The markup can be a template string following the text/template standard
 	// package rules.
 	Render() string

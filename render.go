@@ -1,15 +1,15 @@
-package ml
+package markup
 
 import (
 	"bytes"
 	"text/template"
 )
 
-func renderMarkup(markup string, data interface{}) (rendered string, err error) {
+func render(m string, data interface{}) (rendered string, err error) {
 	var tmpl *template.Template
 	var b bytes.Buffer
 
-	if tmpl, err = template.New("").Parse(markup); err != nil {
+	if tmpl, err = template.New("").Parse(m); err != nil {
 		return
 	}
 
