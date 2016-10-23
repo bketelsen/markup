@@ -39,18 +39,28 @@ func RegisterComponent(name string, b ComponentBuilder) {
 	compoBuilders[name] = b
 }
 
-// ComponentToHTML returns the HTML representation of the component.
+// ComponentToHTML returns the HTML representation of c.
 // returns an error if c is not mounted.
 func ComponentToHTML(c Componer) (HTML string, err error) {
 	var rootElem *Element
-	var mounted bool
 
-	if rootElem, mounted = compoElements[c]; !mounted {
-		err = fmt.Errorf("%#v is not mounted", c)
+	if rootElem, err = ComponentRootElement(c); err != nil {
 		return
 	}
 
 	HTML = rootElem.HTML()
+	return
+}
+
+// ComponentRootElement returns the root element of c.
+// returns an error if c is not mounted.
+func ComponentRootElement(c Componer) (elem *Element, err error) {
+	var mounted bool
+
+	if elem, mounted = compoElements[c]; !mounted {
+		err = fmt.Errorf("%#v is not mounted", c)
+	}
+
 	return
 }
 

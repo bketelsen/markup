@@ -34,7 +34,7 @@ var (
 
 type tagType uint8
 
-// Element represents a ML element.
+// Element represents a HTML element.
 type Element struct {
 	Name       string
 	ID         uid.ID
@@ -44,38 +44,6 @@ type Element struct {
 	Children   []*Element
 	Component  Componer
 	tagType    tagType
-}
-
-// Markup returns the markup representation of the element.
-func (e *Element) Markup() string {
-	return e.markup(0)
-}
-
-func (e *Element) markup(level int) (m string) {
-	indt := indent(level)
-	m = fmt.Sprintf("%v<\033[35m%v\033[00m", indt, e.Name)
-
-	for _, attr := range e.Attributes {
-		m += fmt.Sprintf(" \033[36m%v\033[00m=\"%v\"", attr.Name, attr.Value)
-	}
-
-	if len(e.ID) != 0 {
-		m += fmt.Sprintf(" data-murlok-id=\"%v\"", e.ID)
-	}
-
-	if len(e.Children) == 0 {
-		m += " />"
-		return
-	}
-
-	m += ">"
-
-	for _, c := range e.Children {
-		m += "\n" + c.markup(level+1)
-	}
-
-	m += fmt.Sprintf("\n%v</\033[35m%v\033[00m>", indt, e.Name)
-	return
 }
 
 // HTML returns the HTML representation of the element.
