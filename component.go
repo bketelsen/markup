@@ -44,7 +44,7 @@ func RegisterComponent(name string, b ComponentBuilder) {
 func ComponentToHTML(c Componer) (HTML string, err error) {
 	var rootElem *Element
 
-	if rootElem, err = ComponentRootElement(c); err != nil {
+	if rootElem, err = ComponentRoot(c); err != nil {
 		return
 	}
 
@@ -52,9 +52,9 @@ func ComponentToHTML(c Componer) (HTML string, err error) {
 	return
 }
 
-// ComponentRootElement returns the root element of c.
+// ComponentRoot returns the root element of c.
 // returns an error if c is not mounted.
-func ComponentRootElement(c Componer) (elem *Element, err error) {
+func ComponentRoot(c Componer) (elem *Element, err error) {
 	var mounted bool
 
 	if elem, mounted = compoElements[c]; !mounted {

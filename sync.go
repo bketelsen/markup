@@ -8,7 +8,7 @@ func Sync(c Componer) (changed []*Element, err error) {
 	var currentElem *Element
 	var newElem *Element
 
-	if currentElem, err = ComponentRootElement(c); err != nil {
+	if currentElem, err = ComponentRoot(c); err != nil {
 		return
 	}
 

@@ -85,11 +85,11 @@ func (n *NoField) Render() string {
 `
 }
 
-type ComponentRoot struct {
+type CompoRoot struct {
 	Placebo bool
 }
 
-func (c *ComponentRoot) Render() string {
+func (c *CompoRoot) Render() string {
 	return `
 <Hello />
 `
@@ -193,7 +193,7 @@ func TestMountError(t *testing.T) {
 	}
 
 	// component root
-	compoRoot := &ComponentRoot{}
+	compoRoot := &CompoRoot{}
 	if err := Mount(compoRoot, ctx); err == nil {
 		t.Error("should error")
 	}
