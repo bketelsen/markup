@@ -1,7 +1,5 @@
 package markup
 
-import "fmt"
-
 // Sync synchronizes a component.
 // It check all the elements associated with the component and performs changes if required.
 // Returns the changed elements.
@@ -9,10 +7,8 @@ func Sync(c Componer) (changed []*Element, err error) {
 	var rendered string
 	var currentElem *Element
 	var newElem *Element
-	var currentElemMounted bool
 
-	if currentElem, currentElemMounted = compoElements[c]; !currentElemMounted {
-		err = fmt.Errorf("can't sync a component not mounted: %T %+v", c, c)
+	if currentElem, err = ComponentRootElement(c); err != nil {
 		return
 	}
 
@@ -20,7 +16,7 @@ func Sync(c Componer) (changed []*Element, err error) {
 		return
 	}
 
-	if newElem, err = decodeMarkup(rendered); err != nil {
+	if newElem, err = Decode(rendered); err != nil {
 		return
 	}
 

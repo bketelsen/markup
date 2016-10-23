@@ -42,7 +42,7 @@ func TestDecoderDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(e.Markup())
+	t.Log(e.HTML())
 }
 
 func TestDecoderDecodeEmpty(t *testing.T) {
@@ -82,10 +82,10 @@ func TestDecoderDecodeInvalid(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	e, err := decodeMarkup(fooXML)
+	e, err := Decode(fooXML)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Log(e.Markup())
+	t.Log(e.HTML())
 }

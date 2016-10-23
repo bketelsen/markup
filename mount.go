@@ -43,7 +43,7 @@ func Mount(c Componer, ctx uid.ID) (err error) {
 		return
 	}
 
-	if rootElem, err = decodeMarkup(rendered); err != nil {
+	if rootElem, err = Decode(rendered); err != nil {
 		return
 	}
 

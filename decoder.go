@@ -82,7 +82,7 @@ func (d *decoder) next() error {
 	return d.next()
 }
 
-func decodeMarkup(s string) (*Element, error) {
+func Decode(s string) (*Element, error) {
 	r := bytes.NewBufferString(s)
 	d := newDecoder(r)
 	return d.Decode()
