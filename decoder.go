@@ -82,6 +82,8 @@ func (d *decoder) next() error {
 	return d.next()
 }
 
+// Decode translates an markup string to an element tree.
+// Returns the root element of the tree.
 func Decode(s string) (*Element, error) {
 	r := bytes.NewBufferString(s)
 	d := newDecoder(r)
