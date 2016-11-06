@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	compoBuilders = map[string]ComponentBuilder{}
+	compoBuilders = map[string]func() Componer{}
 	compoElements = map[Componer]*Element{}
 )
 
@@ -21,13 +21,10 @@ type Componer interface {
 	Render() string
 }
 
-// ComponentBuilder defines a function that build a component.
-type ComponentBuilder func() Componer
-
 // RegisterComponent registers a component builder. It allow to know which
 // component should be built when name is found into a markup.
 // Should be called in a init() function, one time per component.
-func RegisterComponent(name string, b ComponentBuilder) {
+func RegisterComponent(name string, b func() Componer) {
 	if !isComponentName(name) {
 		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
 	}
@@ -74,7 +71,7 @@ func isComponentName(v string) bool {
 
 func createComponent(name string) (c Componer, err error) {
 	var registered bool
-	var builder ComponentBuilder
+	var builder func() Componer
 
 	if builder, registered = compoBuilders[name]; !registered {
 		err = fmt.Errorf("component %v is not registered", name)
