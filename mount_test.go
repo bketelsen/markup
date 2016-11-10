@@ -210,9 +210,7 @@ func TestDismount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Dismount(hello); err != nil {
-		t.Error(err)
-	}
+	Dismount(hello)
 
 	if l := len(elements); l != elementsLen {
 		t.Errorf("l should be %v: %v", elementsLen, l)

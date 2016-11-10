@@ -112,7 +112,7 @@ func mountComponent(e *Element, ctx uid.ID) (err error) {
 }
 
 // Dismount dismounts a component.
-func Dismount(c Componer) (err error) {
+func Dismount(c Componer) {
 	var rootElem *Element
 	var dismounter Dismounter
 	var mounted bool
