@@ -38,7 +38,7 @@ type tagType uint8
 type Element struct {
 	Name       string
 	ID         uid.ID
-	Context    uid.ID
+	ContextID  uid.ID
 	Attributes AttrList
 	Parent     *Element
 	Children   []*Element

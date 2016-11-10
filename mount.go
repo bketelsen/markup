@@ -78,7 +78,7 @@ func mount(e *Element, c Componer, ctx uid.ID) (err error) {
 
 func mountElement(e *Element, c Componer, ctx uid.ID) (err error) {
 	e.ID = uid.Elem()
-	e.Context = ctx
+	e.ContextID = ctx
 	e.Component = c
 	elements[e.ID] = e
 
@@ -106,7 +106,7 @@ func mountComponent(e *Element, ctx uid.ID) (err error) {
 		return
 	}
 
-	e.Context = ctx
+	e.ContextID = ctx
 	e.Component = c
 	return
 }

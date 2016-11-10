@@ -84,7 +84,7 @@ func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, chang
 	for _, c := range new.Children {
 		c.Parent = current
 
-		if err = mount(c, current.Component, current.Context); err != nil {
+		if err = mount(c, current.Component, current.ContextID); err != nil {
 			return
 		}
 	}
@@ -106,7 +106,7 @@ func syncHTMLWithComponentOrText(current *Element, new *Element) (parentChanged 
 	current.Children = nil
 
 	parentChanged = true
-	err = mount(current, current.Component, current.Context)
+	err = mount(current, current.Component, current.ContextID)
 	return
 }
 
@@ -126,7 +126,7 @@ func syncComponentWithComponent(current *Element, new *Element) (parentChanged b
 	current.Name = new.Name
 
 	parentChanged = true
-	err = mountComponent(current, current.Context)
+	err = mountComponent(current, current.ContextID)
 	return
 }
 
@@ -138,7 +138,7 @@ func syncComponentWithTextOrHTML(current *Element, new *Element) (parentChanged 
 	current.tagType = new.tagType
 
 	parentChanged = true
-	err = mount(current, current.Parent.Component, current.Parent.Context)
+	err = mount(current, current.Parent.Component, current.Parent.ContextID)
 	return
 }
 
@@ -155,6 +155,6 @@ func syncTextWithHTMLOrComponent(current *Element, new *Element) (parentChanged 
 	current.Children = new.Children
 
 	parentChanged = true
-	err = mount(current, current.Parent.Component, current.Parent.Context)
+	err = mount(current, current.Parent.Component, current.Parent.ContextID)
 	return
 }
