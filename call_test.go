@@ -16,11 +16,11 @@ func (c *ComponentWithFunc) OnCallTest() {
 	log.Info("OnCallTest")
 }
 
-func (c *ComponentWithFunc) OnCallTestWithArg(arg string, number int) {
-	log.Info("OnCallTestWithArg")
+func (c *ComponentWithFunc) OnCallTestWithArg(arg string) {
+	log.Infof("OnCallTestWithArg(%v)", arg)
 }
 
-func (c *ComponentWithFunc) OnCallTestWithMultipleArgs(arg int) {
+func (c *ComponentWithFunc) OnCallTestWithMultipleArgs(arg int, number int) {
 	log.Info("OnCallTestWithMultipleArgs")
 }
 
@@ -58,7 +58,7 @@ func TestCall(t *testing.T) {
 	}
 
 	// arg
-	if err := Call(rootElem.ID, "OnCallTestWithArg", "42"); err != nil {
+	if err := Call(rootElem.ID, "OnCallTestWithArg", `"42"`); err != nil {
 		t.Error(err)
 	}
 }
@@ -79,6 +79,9 @@ func TestCallError(t *testing.T) {
 
 	// multiple args
 	Call(rootElem.ID, "OnCallTestWithMultipleArgs", "")
+
+	// invalid json string
+	Call(rootElem.ID, "OnCallTestWithArg", `42`)
 
 	// unmounted elem
 	if err := Call(uid.Elem(), "OnCallTest", ""); err == nil {

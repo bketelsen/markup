@@ -14,6 +14,7 @@ import (
 func Call(elementID uid.ID, componentMethodName string, jsonArg string) (err error) {
 	var mounted bool
 	var element *Element
+	var arg reflect.Value
 
 	if element, mounted = elements[elementID]; !mounted {
 		err = fmt.Errorf("element with id %v is not mounted", elementID)
@@ -25,7 +26,7 @@ func Call(elementID uid.ID, componentMethodName string, jsonArg string) (err err
 	methodValue := componentValue.MethodByName(componentMethodName)
 
 	if !methodValue.IsValid() {
-		log.Warnf("%T doesn't have a method named %v", componentMethodName)
+		log.Warnf("%T doesn't have a method named %v", component, componentMethodName)
 		return
 	}
 
@@ -37,7 +38,11 @@ func Call(elementID uid.ID, componentMethodName string, jsonArg string) (err err
 
 	case 1:
 		argType := methodType.In(0)
-		arg := reflect.Zero(argType)
+
+		if arg, err = createCallArg(argType, jsonArg); err != nil {
+			return
+		}
+
 		methodValue.Call([]reflect.Value{arg})
 
 	default:
