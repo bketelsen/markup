@@ -1,9 +1,6 @@
 package markup
 
-import (
-	"encoding/xml"
-	"strings"
-)
+import "encoding/xml"
 
 // Attr represents an attribute in an ML element (Name=Value).
 type Attr struct {
@@ -16,6 +13,14 @@ func makeAttr(a xml.Attr) Attr {
 		Name:  a.Name.Local,
 		Value: a.Value,
 	}
+}
+
+func (a Attr) isEvent() bool {
+	if len(a.Name) > 0 && a.Name[0] == '_' {
+		return true
+	}
+
+	return false
 }
 
 // AttrList represents a list of Attr.
@@ -43,12 +48,4 @@ func (l AttrList) equals(other AttrList) bool {
 	}
 
 	return true
-}
-
-func attrEventValue(v string) (string, bool) {
-	if len(v) > 0 && v[0] == '@' {
-		return strings.TrimLeft(v, "@"), true
-	}
-
-	return "", false
 }

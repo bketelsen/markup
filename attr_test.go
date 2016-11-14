@@ -25,6 +25,22 @@ func TestMakeAttr(t *testing.T) {
 	}
 }
 
+func TestAttrIsEvent(t *testing.T) {
+	attr := Attr{
+		Name: "_onchange",
+	}
+
+	if !attr.isEvent() {
+		t.Error("attr should be an event")
+	}
+
+	attr.Name = "onchange"
+
+	if attr.isEvent() {
+		t.Error("attr should  not be an event")
+	}
+}
+
 func TestMakeAttrList(t *testing.T) {
 	xmlAttrs := []xml.Attr{
 		xml.Attr{
@@ -113,22 +129,4 @@ func TestAttrListEquals(t *testing.T) {
 		t.Error("l1 and l3 should not be equals")
 	}
 
-}
-
-func TestAttrEventValue(t *testing.T) {
-	attrEvent := "@OnTest"
-
-	v, ok := attrEventValue(attrEvent)
-	if !ok {
-		t.Error("ok should be true")
-	}
-
-	if v != "OnTest" {
-		t.Errorf("v should be \"OnTest\": \"%v\")", v)
-	}
-
-	attr := "OnTestNonEvent"
-	if _, ok := attrEventValue(attr); ok {
-		t.Error("ok should be false")
-	}
 }
