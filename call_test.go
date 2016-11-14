@@ -81,7 +81,7 @@ func TestCallError(t *testing.T) {
 	Call(rootElem.ID, "OnCallTestWithMultipleArgs", "")
 
 	// invalid json string
-	Call(rootElem.ID, "OnCallTestWithArg", `42`)
+	Call(rootElem.ID, "OnCallTestWithArg", "42")
 
 	// unmounted elem
 	if err := Call(uid.Elem(), "OnCallTest", ""); err == nil {

@@ -14,7 +14,7 @@ A markup must follow these rules:
 - Component element must have its first letter capitalized.
 - Component element attribute must have its first letter capitalized.
 - Each element must have a closing tag (as in XHTML).
-- HTML event handlers should start with '@'.
+- HTML event handlers should start with '_'.
 - Template must follow the rules of https://golang.org/pkg/text/template.
 
 ## Examples
@@ -33,7 +33,7 @@ func (c *Hello) Render() string {
 	return `
  <p>
   	Hello,
- 	<input onchange="@OnInputChange" />
+ 	<input _onchange="OnInputChange" />
  	<World Name="{{.Name}}" />
  </p>
  	`

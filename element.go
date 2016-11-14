@@ -3,6 +3,8 @@ package markup
 import (
 	"encoding/xml"
 	"fmt"
+	"html"
+	"strings"
 
 	"github.com/murlokswarm/uid"
 )
@@ -56,6 +58,7 @@ func (e *Element) html(level int) (m string) {
 
 	if e.tagType == textTag {
 		text := e.Attributes[0].Value
+		text = html.EscapeString(text)
 		m += fmt.Sprintf("%v%v", indt, text)
 		return
 	}
@@ -74,13 +77,15 @@ func (e *Element) html(level int) (m string) {
 	m = fmt.Sprintf("%v<%v", indt, e.Name)
 
 	for _, attr := range e.Attributes {
-		attrValue := attr.Value
-
-		if attrEventVal, ok := attrEventValue(attr.Value); ok {
-			attrValue = fmt.Sprintf("CallEvent('%v', '%v', this, event)", e.ID, attrEventVal)
+		if attr.isEvent() {
+			m += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
+				strings.TrimLeft(attr.Name, "_"),
+				e.ID,
+				attr.Value)
+			continue
 		}
 
-		m += fmt.Sprintf(" %v=\"%v\"", attr.Name, attrValue)
+		m += fmt.Sprintf(" %v=\"%v\"", attr.Name, attr.Value)
 	}
 
 	if len(e.ID) != 0 {
