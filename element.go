@@ -93,7 +93,7 @@ func (e *Element) html(level int) (m string) {
 	}
 
 	if len(e.Children) == 0 {
-		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || isComponentName(e.Name) {
+		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || IsComponentName(e.Name) {
 			m += " />"
 			return
 		}
@@ -116,7 +116,7 @@ func newElement(token xml.StartElement, parent *Element) *Element {
 	name := token.Name.Local
 	tagType := htmlTag
 
-	if isComponentName(name) {
+	if IsComponentName(name) {
 		tagType = componentTag
 	}
 

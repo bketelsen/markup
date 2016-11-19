@@ -78,15 +78,15 @@ func TestComponentToHTML(t *testing.T) {
 }
 
 func TestIsComponentName(t *testing.T) {
-	if name := "Foo"; !isComponentName(name) {
+	if name := "Foo"; !IsComponentName(name) {
 		t.Errorf("%v should be a component name", name)
 	}
 
-	if name := "foo"; isComponentName(name) {
+	if name := "foo"; IsComponentName(name) {
 		t.Errorf("%v should not be a component name", name)
 	}
 
-	if isComponentName("") {
+	if IsComponentName("") {
 		t.Error("empty string should not be a component name")
 	}
 }

@@ -25,7 +25,7 @@ type Componer interface {
 // component should be built when name is found into a markup.
 // Should be called in a init() function, one time per component.
 func RegisterComponent(name string, b func() Componer) {
-	if !isComponentName(name) {
+	if !IsComponentName(name) {
 		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
 	}
 
@@ -61,7 +61,8 @@ func ComponentRoot(c Componer) (elem *Element, err error) {
 	return
 }
 
-func isComponentName(v string) bool {
+// IsComponentName return true if v is a component name, otherwise false.
+func IsComponentName(v string) bool {
 	if len(v) == 0 {
 		return false
 	}
