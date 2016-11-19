@@ -25,6 +25,30 @@ func TestMakeAttr(t *testing.T) {
 	}
 }
 
+func TestAttrAttr(t *testing.T) {
+	attrInt := Attr{
+		Name:  "int",
+		Value: "42",
+	}
+
+	attrs := AttrList{
+		attrInt,
+	}
+
+	attr, ok := attrs.Attr("int")
+	if !ok {
+		t.Error("attr name int should be found")
+	}
+
+	if attr != attrInt {
+		t.Error("attr should be equal to attrInt")
+	}
+
+	if _, ok = attrs.Attr("foo"); ok {
+		t.Error("attr should not be found")
+	}
+}
+
 func TestAttrIsEvent(t *testing.T) {
 	attr := Attr{
 		Name: "_onchange",

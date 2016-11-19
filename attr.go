@@ -36,6 +36,17 @@ func makeAttrList(atrributes []xml.Attr) AttrList {
 	return attrs
 }
 
+// Attr returns the the attribute with name.
+func (l AttrList) Attr(name string) (attr Attr, found bool) {
+	for _, attr := range l {
+		if attr.Name == name {
+			return attr, true
+		}
+	}
+
+	return
+}
+
 func (l AttrList) equals(other AttrList) bool {
 	if len(l) != len(other) {
 		return false
