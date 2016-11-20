@@ -23,37 +23,39 @@ type Dismounter interface {
 // Mount maps a component and its underlying elements.
 // It enable bidirectional communication between a component and the
 // underlying driver.
-func Mount(c Componer, ctx uid.ID) (err error) {
+func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 	var componentValue reflect.Value
-	var rootElem *Element
 	var rendered string
 	var mounted bool
 	var isMounter bool
 	var mounter Mounter
 
 	if componentValue = reflect.Indirect(reflect.ValueOf(c)); componentValue.NumField() == 0 {
-		return fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
+		err = fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
+		return
 	}
 
 	if _, mounted = compoElements[c]; mounted {
-		return fmt.Errorf("component already mounted: %T %+v", c, c)
+		err = fmt.Errorf("component already mounted: %T %+v", c, c)
+		return
 	}
 
 	if rendered, err = render(c.Render(), c); err != nil {
 		return
 	}
 
-	if rootElem, err = Decode(rendered); err != nil {
+	if root, err = Decode(rendered); err != nil {
 		return
 	}
 
-	if rootElem.tagType != htmlTag {
-		return fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
+	if root.tagType != htmlTag {
+		err = fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
+		return
 	}
 
-	compoElements[c] = rootElem
+	compoElements[c] = root
 
-	if err = mount(rootElem, c, ctx); err != nil {
+	if err = mount(root, c, ctx); err != nil {
 		return
 	}
 
@@ -93,6 +95,7 @@ func mountElement(e *Element, c Componer, ctx uid.ID) (err error) {
 
 func mountComponent(e *Element, ctx uid.ID) (err error) {
 	var c Componer
+	var root *Element
 
 	if c, err = createComponent(e.Name); err != nil {
 		return
@@ -102,12 +105,14 @@ func mountComponent(e *Element, ctx uid.ID) (err error) {
 		return
 	}
 
-	if err = Mount(c, ctx); err != nil {
+	if root, err = Mount(c, ctx); err != nil {
 		return
 	}
 
+	root.Parent = e.Parent
 	e.ContextID = ctx
 	e.Component = c
+
 	return
 }
 

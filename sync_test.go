@@ -105,7 +105,7 @@ func TestSyncNoChange(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testHTML}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -128,7 +128,7 @@ func TestSyncHTMLToHTML(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testHTMLAlt}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -157,7 +157,7 @@ func TestSyncHTMLToComponent(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testHTML}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -186,7 +186,7 @@ func TestSyncHTMLToText(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testHTML}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -216,7 +216,7 @@ func TestSyncComponentToComponent(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testComponent}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -245,7 +245,7 @@ func TestSyncComponentToDifferentComponent(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testComponent}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -274,7 +274,7 @@ func TestSyncComponentToHTML(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testComponent}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -303,7 +303,7 @@ func TestSyncComponentToText(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testComponent}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -333,7 +333,7 @@ func TestSyncTextToText(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testText, Text: "Hello"}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -362,7 +362,7 @@ func TestSyncTextToHTML(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testText, Text: "Hello"}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -391,7 +391,7 @@ func TestSyncChildMountError(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{Input: "Hello"}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -407,7 +407,7 @@ func TestSyncAttrErrorError(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{TestType: testComponent}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -431,7 +431,7 @@ func TestSyncBadMarkup(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -447,7 +447,7 @@ func TestSyncBadTemplate(t *testing.T) {
 	ctx := uid.Context()
 	c := &SyncComponent{}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)

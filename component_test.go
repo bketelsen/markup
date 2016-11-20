@@ -64,7 +64,7 @@ func TestComponentToHTML(t *testing.T) {
 		t.Error("should error")
 	}
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)

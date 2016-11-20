@@ -116,7 +116,8 @@ func TestMount(t *testing.T) {
 	elementsLen := len(elements)
 	compoElemsLen := len(compoElements)
 
-	if err := Mount(hello, ctx); err != nil {
+	root, err := Mount(hello, ctx)
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -128,8 +129,7 @@ func TestMount(t *testing.T) {
 		t.Errorf("l should be %v: %v", compoElemsLen+2, l)
 	}
 
-	elem := compoElements[hello]
-	t.Log(elem.HTML())
+	t.Log(root.HTML())
 }
 
 func TestMountError(t *testing.T) {
@@ -138,39 +138,39 @@ func TestMountError(t *testing.T) {
 	// no field
 	noField := &NoField{}
 
-	if err := Mount(noField, ctx); err == nil {
+	if _, err := Mount(noField, ctx); err == nil {
 		t.Error("should error")
 	}
 
 	// already mounted
 	world := &World{}
 
-	if err := Mount(world, ctx); err != nil {
+	if _, err := Mount(world, ctx); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := Mount(world, ctx); err == nil {
+	if _, err := Mount(world, ctx); err == nil {
 		t.Error("should error")
 	}
 
 	// bad template
 	badTpl := &BadTemplate{}
 
-	if err := Mount(badTpl, ctx); err == nil {
+	if _, err := Mount(badTpl, ctx); err == nil {
 		t.Error("should error")
 	}
 
 	// bad markup
 	badMarkup := &BadMarkup{}
 
-	if err := Mount(badMarkup, ctx); err == nil {
+	if _, err := Mount(badMarkup, ctx); err == nil {
 		t.Error("should error")
 	}
 
 	// nonexistent child
 	nonexistentChild := &NonexistentChild{}
 
-	if err := Mount(nonexistentChild, ctx); err == nil {
+	if _, err := Mount(nonexistentChild, ctx); err == nil {
 		t.Error("should error")
 	}
 
@@ -179,7 +179,7 @@ func TestMountError(t *testing.T) {
 		Number: 42.99,
 	}
 
-	if err := Mount(hello, ctx); err == nil {
+	if _, err := Mount(hello, ctx); err == nil {
 		t.Error("should error")
 	}
 
@@ -188,13 +188,13 @@ func TestMountError(t *testing.T) {
 		MountError: true,
 	}
 
-	if err := Mount(hello, ctx); err == nil {
+	if _, err := Mount(hello, ctx); err == nil {
 		t.Error("should error")
 	}
 
 	// component root
 	compoRoot := &CompoRoot{}
-	if err := Mount(compoRoot, ctx); err == nil {
+	if _, err := Mount(compoRoot, ctx); err == nil {
 		t.Error("should error")
 	}
 }
@@ -206,7 +206,7 @@ func TestDismount(t *testing.T) {
 	elementsLen := len(elements)
 	compoElemsLen := len(compoElements)
 
-	if err := Mount(hello, ctx); err != nil {
+	if _, err := Mount(hello, ctx); err != nil {
 		t.Fatal(err)
 	}
 

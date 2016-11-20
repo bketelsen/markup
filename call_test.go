@@ -45,7 +45,7 @@ func TestCall(t *testing.T) {
 	c := &ComponentWithFunc{}
 	ctx := uid.Context()
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
@@ -67,7 +67,7 @@ func TestCallError(t *testing.T) {
 	c := &ComponentWithFunc{}
 	ctx := uid.Context()
 
-	if err := Mount(c, ctx); err != nil {
+	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
 	}
 	defer Dismount(c)
