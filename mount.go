@@ -30,6 +30,11 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 	var isMounter bool
 	var mounter Mounter
 
+	if v := reflect.ValueOf(c); v.Kind() != reflect.Ptr {
+		err = fmt.Errorf("\033[33m%T\033[00m should be a pointer", c)
+		return
+	}
+
 	if componentValue = reflect.Indirect(reflect.ValueOf(c)); componentValue.NumField() == 0 {
 		err = fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
 		return

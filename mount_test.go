@@ -59,9 +59,7 @@ type BadMarkup struct {
 }
 
 func (b *BadMarkup) Render() string {
-	return `
-<div></span>
-`
+	return `<div></span>`
 }
 
 type NonexistentChild struct {
@@ -80,9 +78,7 @@ type NoField struct {
 }
 
 func (n *NoField) Render() string {
-	return `
-<div></div>
-`
+	return `<div></div>`
 }
 
 type CompoRoot struct {
@@ -90,9 +86,15 @@ type CompoRoot struct {
 }
 
 func (c *CompoRoot) Render() string {
-	return `
-<Hello />
-`
+	return `<Hello />`
+}
+
+type NoPointer struct {
+	Placebo string
+}
+
+func (n NoPointer) Render() string {
+	return `<div></div>`
 }
 
 func init() {
@@ -195,6 +197,12 @@ func TestMountError(t *testing.T) {
 	// component root
 	compoRoot := &CompoRoot{}
 	if _, err := Mount(compoRoot, ctx); err == nil {
+		t.Error("should error")
+	}
+
+	// no pointer
+	noPointer := NoPointer{}
+	if _, err := Mount(noPointer, ctx); err == nil {
 		t.Error("should error")
 	}
 }
