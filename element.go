@@ -10,9 +10,14 @@ import (
 )
 
 const (
-	htmlTag tagType = iota
-	componentTag
-	textTag
+	// HTML represents a standard HTML element.
+	HTML ElementType = iota
+
+	// Component represents a component element.
+	Component
+
+	// Text represents a text element.
+	Text
 )
 
 var (
@@ -34,44 +39,45 @@ var (
 	}
 )
 
-type tagType uint8
+// ElementType represents the type of an element.
+type ElementType uint8
 
 // Element represents a markup element.
 type Element struct {
 	Name       string
+	Type       ElementType
 	ID         uid.ID
 	ContextID  uid.ID
 	Attributes AttrList
 	Parent     *Element
 	Children   []*Element
 	Component  Componer
-	tagType    tagType
 }
 
 func newElement(token xml.StartElement, parent *Element) *Element {
-	name := token.Name.Local
-	tagType := htmlTag
+	n := token.Name.Local
+	t := HTML
 
-	if IsComponentName(name) {
-		tagType = componentTag
+	if IsComponentName(n) {
+		t = Component
 	}
 
 	return &Element{
-		Name:       name,
+		Name:       n,
+		Type:       t,
 		Attributes: makeAttrList(token.Attr),
 		Parent:     parent,
-		tagType:    tagType,
 	}
 }
 
 func newTextElement(text string, parent *Element) *Element {
 	return &Element{
 		Name: "text",
+		Type: Text,
 		Attributes: AttrList{
 			Attr{Name: "value", Value: text},
 		},
-		Parent:  parent,
-		tagType: textTag,
+		Parent: parent,
 	}
 }
 
@@ -83,14 +89,14 @@ func (e *Element) HTML() string {
 func (e *Element) html(level int) (markup string) {
 	indt := indent(level)
 
-	if e.tagType == textTag {
+	if e.Type == Text {
 		text := e.Attributes[0].Value
 		text = html.EscapeString(text)
 		markup += fmt.Sprintf("%v%v", indt, text)
 		return
 	}
 
-	if e.tagType == componentTag {
+	if e.Type == Component {
 		if e.Component == nil {
 			markup += fmt.Sprintf("%v<!-- %v -->", indt, e.Name)
 			return

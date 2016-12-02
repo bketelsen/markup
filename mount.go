@@ -43,7 +43,7 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 		return
 	}
 
-	if root.tagType != htmlTag {
+	if root.Type != HTML {
 		err = fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
 		return
 	}
@@ -64,11 +64,11 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 }
 
 func mount(e *Element, c Componer, ctx uid.ID) (err error) {
-	switch e.tagType {
-	case htmlTag:
+	switch e.Type {
+	case HTML:
 		return mountElement(e, c, ctx)
 
-	case componentTag:
+	case Component:
 		return mountComponent(e, ctx)
 	}
 	return
@@ -129,11 +129,11 @@ func Dismount(c Componer) {
 }
 
 func dismount(e *Element) {
-	switch e.tagType {
-	case htmlTag:
+	switch e.Type {
+	case HTML:
 		dismountElement(e)
 
-	case componentTag:
+	case Component:
 		Dismount(e.Component)
 	}
 }
