@@ -4,19 +4,18 @@ package markup
 // It check all the elements associated with the component and performs changes if required.
 // Returns the changed elements.
 func Sync(c Componer) (changed []*Element, err error) {
-	var rendered string
-	var currentElem *Element
-	var newElem *Element
-
-	if currentElem, err = ComponentRoot(c); err != nil {
+	currentElem, err := ComponentRoot(c)
+	if err != nil {
 		return
 	}
 
-	if rendered, err = render(c.Render(), c); err != nil {
+	rendered, err := render(c.Render(), c)
+	if err != nil {
 		return
 	}
 
-	if newElem, err = Decode(rendered); err != nil {
+	newElem, err := Decode(rendered)
+	if err != nil {
 		return
 	}
 
@@ -50,7 +49,6 @@ func sync(current *Element, new *Element) (parentChanged bool, changed []*Elemen
 	if currentChanged {
 		changed = []*Element{current}
 	}
-
 	return
 }
 

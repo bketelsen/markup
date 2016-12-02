@@ -8,7 +8,6 @@ import (
 )
 
 type Foo struct {
-	Placebo bool
 }
 
 func (f *Foo) Render() string {

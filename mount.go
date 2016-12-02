@@ -24,28 +24,18 @@ type Dismounter interface {
 // It enable bidirectional communication between a component and the
 // underlying driver.
 func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
-	var componentValue reflect.Value
-	var rendered string
-	var mounted bool
-	var isMounter bool
-	var mounter Mounter
-
 	if v := reflect.ValueOf(c); v.Kind() != reflect.Ptr {
-		err = fmt.Errorf("\033[33m%T\033[00m should be a pointer", c)
+		err = fmt.Errorf("Mount accepts only pointers: \033[31m%T\033[00m", c)
 		return
 	}
 
-	if componentValue = reflect.Indirect(reflect.ValueOf(c)); componentValue.NumField() == 0 {
-		err = fmt.Errorf("\033[33m%T\033[00m must have at least 1 field", c)
-		return
+	if compo, mounted := components[c]; mounted {
+		compo.Count++
+		return compo.Root, nil
 	}
 
-	if _, mounted = compoElements[c]; mounted {
-		err = fmt.Errorf("component already mounted: %T %+v", c, c)
-		return
-	}
-
-	if rendered, err = render(c.Render(), c); err != nil {
+	rendered, err := render(c.Render(), c)
+	if err != nil {
 		return
 	}
 
@@ -58,16 +48,18 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 		return
 	}
 
-	compoElements[c] = root
-
 	if err = mount(root, c, ctx); err != nil {
 		return
 	}
 
-	if mounter, isMounter = c.(Mounter); isMounter {
-		mounter.OnMount()
+	components[c] = &component{
+		Count: 1,
+		Root:  root,
 	}
 
+	if mounter, isMounter := c.(Mounter); isMounter {
+		mounter.OnMount()
+	}
 	return
 }
 
@@ -79,67 +71,60 @@ func mount(e *Element, c Componer, ctx uid.ID) (err error) {
 	case componentTag:
 		return mountComponent(e, ctx)
 	}
-
 	return
 }
 
-func mountElement(e *Element, c Componer, ctx uid.ID) (err error) {
+func mountElement(e *Element, c Componer, ctx uid.ID) error {
 	e.ID = uid.Elem()
 	e.ContextID = ctx
 	e.Component = c
 	elements[e.ID] = e
 
 	for _, child := range e.Children {
-		if err = mount(child, c, ctx); err != nil {
-			return
+		if err := mount(child, c, ctx); err != nil {
+			return err
 		}
 	}
-
-	return
+	return nil
 }
 
-func mountComponent(e *Element, ctx uid.ID) (err error) {
-	var c Componer
-	var root *Element
-
-	if c, err = createComponent(e.Name); err != nil {
-		return
+func mountComponent(e *Element, ctx uid.ID) error {
+	c, err := createComponent(e.Name)
+	if err != nil {
+		return err
 	}
 
 	if err = updateComponentFields(c, e.Attributes); err != nil {
-		return
+		return err
 	}
 
-	if root, err = Mount(c, ctx); err != nil {
-		return
+	root, err := Mount(c, ctx)
+	if err != nil {
+		return err
 	}
 
 	root.Parent = e.Parent
 	e.ContextID = ctx
 	e.Component = c
-
-	return
+	return err
 }
 
 // Dismount dismounts a component.
 func Dismount(c Componer) {
-	var rootElem *Element
-	var dismounter Dismounter
-	var mounted bool
-	var isDismounter bool
-
-	if rootElem, mounted = compoElements[c]; !mounted {
+	compo, mounted := components[c]
+	if !mounted {
 		log.Warnf("%#v is already dismounted", c)
 		return
 	}
 
-	dismount(rootElem)
-	delete(compoElements, c)
-
-	if dismounter, isDismounter = c.(Dismounter); isDismounter {
-		dismounter.OnDismount()
+	if compo.Count--; compo.Count == 0 {
+		dismount(compo.Root)
+		delete(components, c)
 	}
 
+	if dismounter, isDismounter := c.(Dismounter); isDismounter {
+		dismounter.OnDismount()
+	}
 	return
 }
 
@@ -157,6 +142,5 @@ func dismountElement(e *Element) {
 	for _, child := range e.Children {
 		dismount(child)
 	}
-
 	delete(elements, e.ID)
 }

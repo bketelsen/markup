@@ -19,7 +19,6 @@ func (a Attr) isEvent() bool {
 	if len(a.Name) > 0 && a.Name[0] == '_' {
 		return true
 	}
-
 	return false
 }
 
@@ -32,7 +31,6 @@ func makeAttrList(atrributes []xml.Attr) AttrList {
 	for i, a := range atrributes {
 		attrs[i] = makeAttr(a)
 	}
-
 	return attrs
 }
 
@@ -43,7 +41,6 @@ func (l AttrList) Attr(name string) (attr Attr, found bool) {
 			return attr, true
 		}
 	}
-
 	return
 }
 
@@ -57,6 +54,5 @@ func (l AttrList) equals(other AttrList) bool {
 			return false
 		}
 	}
-
 	return true
 }

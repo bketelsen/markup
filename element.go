@@ -36,7 +36,7 @@ var (
 
 type tagType uint8
 
-// Element represents a HTML element.
+// Element represents a markup element.
 type Element struct {
 	Name       string
 	ID         uid.ID
@@ -46,70 +46,6 @@ type Element struct {
 	Children   []*Element
 	Component  Componer
 	tagType    tagType
-}
-
-// HTML returns the HTML representation of the element.
-func (e *Element) HTML() string {
-	return e.html(0)
-}
-
-func (e *Element) html(level int) (m string) {
-	indt := indent(level)
-
-	if e.tagType == textTag {
-		text := e.Attributes[0].Value
-		text = html.EscapeString(text)
-		m += fmt.Sprintf("%v%v", indt, text)
-		return
-	}
-
-	if e.tagType == componentTag {
-		if e.Component == nil {
-			m += fmt.Sprintf("%v<!-- %v -->", indt, e.Name)
-			return
-		}
-
-		compoRoot := compoElements[e.Component]
-		m += compoRoot.html(level)
-		return
-	}
-
-	m = fmt.Sprintf("%v<%v", indt, e.Name)
-
-	for _, attr := range e.Attributes {
-		if attr.isEvent() {
-			m += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
-				strings.TrimLeft(attr.Name, "_"),
-				e.ID,
-				attr.Value)
-			continue
-		}
-
-		m += fmt.Sprintf(" %v=\"%v\"", attr.Name, attr.Value)
-	}
-
-	if len(e.ID) != 0 {
-		m += fmt.Sprintf(" data-murlok-id=\"%v\"", e.ID)
-	}
-
-	if len(e.Children) == 0 {
-		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || IsComponentName(e.Name) {
-			m += " />"
-			return
-		}
-
-		m += fmt.Sprintf("></%v>", e.Name)
-		return
-	}
-
-	m += ">"
-
-	for _, c := range e.Children {
-		m += "\n" + c.html(level+1)
-	}
-
-	m += fmt.Sprintf("\n%v</%v>", indt, e.Name)
-	return
 }
 
 func newElement(token xml.StartElement, parent *Element) *Element {
@@ -139,10 +75,77 @@ func newTextElement(text string, parent *Element) *Element {
 	}
 }
 
+// HTML returns the HTML representation of the element.
+func (e *Element) HTML() string {
+	return e.html(0)
+}
+
+func (e *Element) html(level int) (markup string) {
+	indt := indent(level)
+
+	if e.tagType == textTag {
+		text := e.Attributes[0].Value
+		text = html.EscapeString(text)
+		markup += fmt.Sprintf("%v%v", indt, text)
+		return
+	}
+
+	if e.tagType == componentTag {
+		if e.Component == nil {
+			markup += fmt.Sprintf("%v<!-- %v -->", indt, e.Name)
+			return
+		}
+
+		compoRoot := components[e.Component].Root
+		markup += compoRoot.html(level)
+		return
+	}
+
+	markup = fmt.Sprintf("%v<%v", indt, e.Name)
+
+	for _, attr := range e.Attributes {
+		if attr.isEvent() {
+			markup += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
+				strings.TrimLeft(attr.Name, "_"),
+				e.ID,
+				attr.Value)
+			continue
+		}
+
+		markup += fmt.Sprintf(" %v=\"%v\"", attr.Name, attr.Value)
+	}
+
+	if len(e.ID) != 0 {
+		markup += fmt.Sprintf(" data-murlok-id=\"%v\"", e.ID)
+	}
+
+	if len(e.Children) == 0 {
+		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || IsComponentName(e.Name) {
+			markup += " />"
+			return
+		}
+
+		markup += fmt.Sprintf("></%v>", e.Name)
+		return
+	}
+
+	markup += ">"
+
+	for _, c := range e.Children {
+		markup += "\n" + c.html(level+1)
+	}
+
+	markup += fmt.Sprintf("\n%v</%v>", indt, e.Name)
+	return
+}
+
+func (e *Element) String() string {
+	return fmt.Sprintf("[\033[36m%v\033[00m \033[33m%v\033[00m]", e.Name, e.ID)
+}
+
 func indent(level int) (ret string) {
 	for i := 0; i < level; i++ {
 		ret += "  "
 	}
-
 	return
 }
