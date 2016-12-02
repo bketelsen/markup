@@ -10,7 +10,7 @@ import (
 
 var (
 	compoBuilders = map[string]func() Componer{}
-	compoElements = map[Componer]*Element{}
+	components    = map[Componer]*component{}
 )
 
 // Componer is the interface that describes a component.
@@ -19,6 +19,11 @@ type Componer interface {
 	// The markup can be a template string following the text/template standard
 	// package rules.
 	Render() string
+}
+
+type component struct {
+	Count int
+	Root  *Element
 }
 
 // RegisterComponent registers a component builder. It allow to know which
@@ -51,14 +56,12 @@ func ComponentToHTML(c Componer) (HTML string, err error) {
 
 // ComponentRoot returns the root element of c.
 // returns an error if c is not mounted.
-func ComponentRoot(c Componer) (elem *Element, err error) {
-	var mounted bool
-
-	if elem, mounted = compoElements[c]; !mounted {
-		err = fmt.Errorf("%#v is not mounted", c)
+func ComponentRoot(c Componer) (root *Element, err error) {
+	if compo, mounted := components[c]; mounted {
+		return compo.Root, nil
 	}
 
-	return
+	return nil, fmt.Errorf("%#v is not mounted", c)
 }
 
 // IsComponentName return true if v is a component name, otherwise false.
@@ -66,33 +69,26 @@ func IsComponentName(v string) bool {
 	if len(v) == 0 {
 		return false
 	}
-
 	return v[0] >= 'A' && v[0] <= 'Z'
 }
 
 func createComponent(name string) (c Componer, err error) {
-	var registered bool
-	var builder func() Componer
-
-	if builder, registered = compoBuilders[name]; !registered {
-		err = fmt.Errorf("component %v is not registered", name)
-		return
+	builder, registered := compoBuilders[name]
+	if !registered {
+		return nil, fmt.Errorf("component %v is not registered", name)
 	}
-
-	c = builder()
-	return
+	return builder(), nil
 }
 
-func updateComponentFields(c Componer, attrs AttrList) (err error) {
+func updateComponentFields(c Componer, attrs AttrList) error {
 	compo := reflect.Indirect(reflect.ValueOf(c))
 
 	for _, attr := range attrs {
-		if err = updateComponentField(compo, attr); err != nil {
-			return
+		if err := updateComponentField(compo, attr); err != nil {
+			return err
 		}
 	}
-
-	return
+	return nil
 }
 
 func updateComponentField(compo reflect.Value, attr Attr) error {
@@ -143,6 +139,5 @@ func updateComponentField(compo reflect.Value, attr Attr) error {
 			attr.Name,
 			field.Interface())
 	}
-
 	return nil
 }

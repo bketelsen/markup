@@ -10,9 +10,14 @@ import (
 )
 
 const (
-	htmlTag tagType = iota
-	componentTag
-	textTag
+	// HTML represents a standard HTML element.
+	HTML ElementType = iota
+
+	// Component represents a component element.
+	Component
+
+	// Text represents a text element.
+	Text
 )
 
 var (
@@ -34,18 +39,46 @@ var (
 	}
 )
 
-type tagType uint8
+// ElementType represents the type of an element.
+type ElementType uint8
 
-// Element represents a HTML element.
+// Element represents a markup element.
 type Element struct {
 	Name       string
+	Type       ElementType
 	ID         uid.ID
 	ContextID  uid.ID
 	Attributes AttrList
 	Parent     *Element
 	Children   []*Element
 	Component  Componer
-	tagType    tagType
+}
+
+func newElement(token xml.StartElement, parent *Element) *Element {
+	n := token.Name.Local
+	t := HTML
+
+	if IsComponentName(n) {
+		t = Component
+	}
+
+	return &Element{
+		Name:       n,
+		Type:       t,
+		Attributes: makeAttrList(token.Attr),
+		Parent:     parent,
+	}
+}
+
+func newTextElement(text string, parent *Element) *Element {
+	return &Element{
+		Name: "text",
+		Type: Text,
+		Attributes: AttrList{
+			Attr{Name: "value", Value: text},
+		},
+		Parent: parent,
+	}
 }
 
 // HTML returns the HTML representation of the element.
@@ -53,96 +86,72 @@ func (e *Element) HTML() string {
 	return e.html(0)
 }
 
-func (e *Element) html(level int) (m string) {
+func (e *Element) html(level int) (markup string) {
 	indt := indent(level)
 
-	if e.tagType == textTag {
+	if e.Type == Text {
 		text := e.Attributes[0].Value
 		text = html.EscapeString(text)
-		m += fmt.Sprintf("%v%v", indt, text)
+		markup += fmt.Sprintf("%v%v", indt, text)
 		return
 	}
 
-	if e.tagType == componentTag {
+	if e.Type == Component {
 		if e.Component == nil {
-			m += fmt.Sprintf("%v<!-- %v -->", indt, e.Name)
+			markup += fmt.Sprintf("%v<!-- %v -->", indt, e.Name)
 			return
 		}
 
-		compoRoot := compoElements[e.Component]
-		m += compoRoot.html(level)
+		compoRoot := components[e.Component].Root
+		markup += compoRoot.html(level)
 		return
 	}
 
-	m = fmt.Sprintf("%v<%v", indt, e.Name)
+	markup = fmt.Sprintf("%v<%v", indt, e.Name)
 
 	for _, attr := range e.Attributes {
 		if attr.isEvent() {
-			m += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
+			markup += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
 				strings.TrimLeft(attr.Name, "_"),
 				e.ID,
 				attr.Value)
 			continue
 		}
 
-		m += fmt.Sprintf(" %v=\"%v\"", attr.Name, attr.Value)
+		markup += fmt.Sprintf(" %v=\"%v\"", attr.Name, attr.Value)
 	}
 
 	if len(e.ID) != 0 {
-		m += fmt.Sprintf(" data-murlok-id=\"%v\"", e.ID)
+		markup += fmt.Sprintf(" data-murlok-id=\"%v\"", e.ID)
 	}
 
 	if len(e.Children) == 0 {
 		if _, isVoidElement := voidElementNames[e.Name]; isVoidElement || IsComponentName(e.Name) {
-			m += " />"
+			markup += " />"
 			return
 		}
 
-		m += fmt.Sprintf("></%v>", e.Name)
+		markup += fmt.Sprintf("></%v>", e.Name)
 		return
 	}
 
-	m += ">"
+	markup += ">"
 
 	for _, c := range e.Children {
-		m += "\n" + c.html(level+1)
+		markup += "\n" + c.html(level+1)
 	}
 
-	m += fmt.Sprintf("\n%v</%v>", indt, e.Name)
+	markup += fmt.Sprintf("\n%v</%v>", indt, e.Name)
 	return
 }
 
-func newElement(token xml.StartElement, parent *Element) *Element {
-	name := token.Name.Local
-	tagType := htmlTag
-
-	if IsComponentName(name) {
-		tagType = componentTag
-	}
-
-	return &Element{
-		Name:       name,
-		Attributes: makeAttrList(token.Attr),
-		Parent:     parent,
-		tagType:    tagType,
-	}
-}
-
-func newTextElement(text string, parent *Element) *Element {
-	return &Element{
-		Name: "text",
-		Attributes: AttrList{
-			Attr{Name: "value", Value: text},
-		},
-		Parent:  parent,
-		tagType: textTag,
-	}
+func (e *Element) String() string {
+	return fmt.Sprintf("[\033[36m%v\033[00m \033[33m%v\033[00m]", e.Name, e.ID)
 }
 
 func indent(level int) (ret string) {
 	for i := 0; i < level; i++ {
 		ret += "  "
 	}
-
 	return
 }

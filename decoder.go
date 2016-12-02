@@ -65,7 +65,6 @@ func (d *decoder) next() error {
 		}
 
 	case xml.CharData:
-
 		text := strings.TrimSpace(string(t))
 		if len(text) == 0 {
 			break
@@ -78,7 +77,6 @@ func (d *decoder) next() error {
 		elem := newTextElement(text, d.current)
 		d.current.Children = append(d.current.Children, elem)
 	}
-
 	return d.next()
 }
 

@@ -45,7 +45,6 @@ func (w *World) OnDismount() {
 }
 
 type BadTemplate struct {
-	Placebo string
 }
 
 func (b *BadTemplate) Render() string {
@@ -55,7 +54,6 @@ func (b *BadTemplate) Render() string {
 }
 
 type BadMarkup struct {
-	Placebo string
 }
 
 func (b *BadMarkup) Render() string {
@@ -63,7 +61,6 @@ func (b *BadMarkup) Render() string {
 }
 
 type NonexistentChild struct {
-	Placebo string
 }
 
 func (n *NonexistentChild) Render() string {
@@ -74,15 +71,13 @@ func (n *NonexistentChild) Render() string {
 `
 }
 
-type NoField struct {
-}
+type EmptyComponent struct{}
 
-func (n *NoField) Render() string {
+func (c *EmptyComponent) Render() string {
 	return `<div></div>`
 }
 
 type CompoRoot struct {
-	Placebo bool
 }
 
 func (c *CompoRoot) Render() string {
@@ -90,7 +85,6 @@ func (c *CompoRoot) Render() string {
 }
 
 type NoPointer struct {
-	Placebo string
 }
 
 func (n NoPointer) Render() string {
@@ -116,44 +110,82 @@ func TestMount(t *testing.T) {
 	ctx := uid.Context()
 
 	elementsLen := len(elements)
-	compoElemsLen := len(compoElements)
+	compoElemsLen := len(components)
 
 	root, err := Mount(hello, ctx)
 	if err != nil {
 		t.Error(err)
 	}
 
+	defer Dismount(hello)
+
 	if l := len(elements); l != elementsLen+2 {
 		t.Errorf("l should be %v: %v", elementsLen+2, l)
 	}
 
-	if l := len(compoElements); l != compoElemsLen+2 {
+	if l := len(components); l != compoElemsLen+2 {
 		t.Errorf("l should be %v: %v", compoElemsLen+2, l)
 	}
 
 	t.Log(root.HTML())
 }
 
-func TestMountError(t *testing.T) {
+func TestMountEmpty(t *testing.T) {
+	empty1 := &EmptyComponent{}
+	empty2 := &EmptyComponent{}
 	ctx := uid.Context()
 
-	// no field
-	noField := &NoField{}
+	elemNum := len(elements)
+	compoNum := len(components)
 
-	if _, err := Mount(noField, ctx); err == nil {
-		t.Error("should error")
+	if _, err := Mount(empty1, ctx); err != nil {
+		t.Error(err)
 	}
 
-	// already mounted
-	world := &World{}
-
-	if _, err := Mount(world, ctx); err != nil {
-		t.Fatal(err)
+	if l := len(elements); l != elemNum+1 {
+		t.Errorf("l should be %v: %v", elemNum+1, l)
 	}
 
-	if _, err := Mount(world, ctx); err == nil {
-		t.Error("should error")
+	if l := len(components); l != compoNum+1 {
+		t.Errorf("l should be %v: %v", compoNum+1, l)
 	}
+
+	_, err := Mount(empty2, ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if l := len(elements); l != elemNum+1 {
+		t.Errorf("l should be %v: %v", elemNum+1, l)
+	}
+
+	if l := len(components); l != compoNum+1 {
+		t.Errorf("l should be %v: %v", compoNum+1, l)
+	}
+
+	Dismount(empty1)
+
+	if l := len(elements); l != elemNum+1 {
+		t.Errorf("l should be %v: %v", elemNum+1, l)
+	}
+
+	if l := len(components); l != compoNum+1 {
+		t.Errorf("l should be %v: %v", compoNum+1, l)
+	}
+
+	Dismount(empty2)
+
+	if l := len(elements); l != elemNum {
+		t.Errorf("l should be %v: %v", elemNum, l)
+	}
+
+	if l := len(components); l != compoNum {
+		t.Errorf("l should be %v: %v", compoNum, l)
+	}
+}
+
+func TestMountError(t *testing.T) {
+	ctx := uid.Context()
 
 	// bad template
 	badTpl := &BadTemplate{}
@@ -212,7 +244,7 @@ func TestDismount(t *testing.T) {
 	ctx := uid.Context()
 
 	elementsLen := len(elements)
-	compoElemsLen := len(compoElements)
+	compoElemsLen := len(components)
 
 	if _, err := Mount(hello, ctx); err != nil {
 		t.Fatal(err)
@@ -224,7 +256,7 @@ func TestDismount(t *testing.T) {
 		t.Errorf("l should be %v: %v", elementsLen, l)
 	}
 
-	if l := len(compoElements); l != compoElemsLen {
+	if l := len(components); l != compoElemsLen {
 		t.Errorf("l should be %v: %v", compoElemsLen, l)
 	}
 }

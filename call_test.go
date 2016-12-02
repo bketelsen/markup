@@ -50,7 +50,7 @@ func TestCall(t *testing.T) {
 	}
 	defer Dismount(c)
 
-	rootElem := compoElements[c]
+	rootElem := components[c].Root
 
 	// no arg
 	if err := Call(rootElem.ID, "OnCallTest", ""); err != nil {
@@ -72,7 +72,7 @@ func TestCallError(t *testing.T) {
 	}
 	defer Dismount(c)
 
-	rootElem := compoElements[c]
+	rootElem := components[c].Root
 
 	// undefined method
 	Call(rootElem.ID, "OnCallFoo", "")

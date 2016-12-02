@@ -4,19 +4,18 @@ package markup
 // It check all the elements associated with the component and performs changes if required.
 // Returns the changed elements.
 func Sync(c Componer) (changed []*Element, err error) {
-	var rendered string
-	var currentElem *Element
-	var newElem *Element
-
-	if currentElem, err = ComponentRoot(c); err != nil {
+	currentElem, err := ComponentRoot(c)
+	if err != nil {
 		return
 	}
 
-	if rendered, err = render(c.Render(), c); err != nil {
+	rendered, err := render(c.Render(), c)
+	if err != nil {
 		return
 	}
 
-	if newElem, err = Decode(rendered); err != nil {
+	newElem, err := Decode(rendered)
+	if err != nil {
 		return
 	}
 
@@ -50,25 +49,24 @@ func sync(current *Element, new *Element) (parentChanged bool, changed []*Elemen
 	if currentChanged {
 		changed = []*Element{current}
 	}
-
 	return
 }
 
 func syncElements(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
 	switch {
-	case current.tagType == htmlTag && new.tagType != htmlTag:
+	case current.Type == HTML && new.Type != HTML:
 		return syncHTMLWithComponentOrText(current, new)
 
-	case current.tagType == componentTag && new.tagType == componentTag:
+	case current.Type == Component && new.Type == Component:
 		return syncComponentWithComponent(current, new)
 
-	case current.tagType == componentTag && new.tagType != componentTag:
+	case current.Type == Component && new.Type != Component:
 		return syncComponentWithTextOrHTML(current, new)
 
-	case current.tagType == textTag && new.tagType == textTag:
+	case current.Type == Text && new.Type == Text:
 		return syncTextWithText(current, new)
 
-	case current.tagType == textTag && new.tagType != textTag:
+	case current.Type == Text && new.Type != Text:
 		return syncTextWithHTMLOrComponent(current, new)
 
 	default:
@@ -102,7 +100,7 @@ func syncHTMLWithComponentOrText(current *Element, new *Element) (parentChanged 
 
 	current.Name = new.Name
 	current.Attributes = new.Attributes
-	current.tagType = new.tagType
+	current.Type = new.Type
 	current.Children = nil
 
 	parentChanged = true
@@ -135,7 +133,7 @@ func syncComponentWithTextOrHTML(current *Element, new *Element) (parentChanged 
 
 	current.Name = new.Name
 	current.Attributes = new.Attributes
-	current.tagType = new.tagType
+	current.Type = new.Type
 
 	parentChanged = true
 	err = mount(current, current.Parent.Component, current.Parent.ContextID)
@@ -151,7 +149,7 @@ func syncTextWithText(current *Element, new *Element) (parentChanged bool, chang
 func syncTextWithHTMLOrComponent(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
 	current.Name = new.Name
 	current.Attributes = new.Attributes
-	current.tagType = new.tagType
+	current.Type = new.Type
 	current.Children = new.Children
 
 	parentChanged = true
