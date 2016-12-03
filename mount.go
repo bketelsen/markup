@@ -30,8 +30,13 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 	}
 
 	if compo, mounted := components[c]; mounted {
-		compo.Count++
-		return compo.Root, nil
+		// Go uses the same reference for different instances of a same empty struct.
+		// This prevents from mounting a same empty struct.
+		if t := reflect.TypeOf(c).Elem(); t.NumField() == 0 {
+			compo.Count++
+			return compo.Root, nil
+		}
+		return nil, fmt.Errorf("[%T %p] is already mounted", c, c)
 	}
 
 	rendered, err := render(c.Render(), c)
@@ -117,13 +122,15 @@ func Dismount(c Componer) {
 		return
 	}
 
+	// Go uses the same reference for different instances of a same empty struct.
+	// This prevents from dismounting an empty struct that still remains in another context.
 	if compo.Count--; compo.Count == 0 {
 		dismount(compo.Root)
 		delete(components, c)
-	}
 
-	if dismounter, isDismounter := c.(Dismounter); isDismounter {
-		dismounter.OnDismount()
+		if dismounter, isDismounter := c.(Dismounter); isDismounter {
+			dismounter.OnDismount()
+		}
 	}
 	return
 }
