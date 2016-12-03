@@ -187,6 +187,12 @@ func TestMountEmpty(t *testing.T) {
 func TestMountError(t *testing.T) {
 	ctx := uid.Context()
 
+	hello := &Hello{}
+	Mount(hello, ctx)
+	if _, err := Mount(hello, ctx); err == nil {
+		t.Error("should error")
+	}
+
 	// bad template
 	badTpl := &BadTemplate{}
 
@@ -209,11 +215,11 @@ func TestMountError(t *testing.T) {
 	}
 
 	// bad attibute
-	hello := &Hello{
+	helloBis := &Hello{
 		Number: 42.99,
 	}
 
-	if _, err := Mount(hello, ctx); err == nil {
+	if _, err := Mount(helloBis, ctx); err == nil {
 		t.Error("should error")
 	}
 
