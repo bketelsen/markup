@@ -111,7 +111,7 @@ func (e *Element) html(level int) (markup string) {
 
 	for _, attr := range e.Attributes {
 		if attr.isEvent() {
-			markup += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', event, value)\"",
+			markup += fmt.Sprintf(" %v=\"CallEvent('%v', '%v', this, event)\"",
 				strings.TrimLeft(attr.Name, "_"),
 				e.ID,
 				attr.Value)
