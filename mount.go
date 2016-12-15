@@ -36,7 +36,7 @@ func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
 			compo.Count++
 			return compo.Root, nil
 		}
-		return nil, fmt.Errorf("[%T %p] is already mounted", c, c)
+		return nil, fmt.Errorf("%+v is already mounted", c)
 	}
 
 	rendered, err := render(c.Render(), c)
