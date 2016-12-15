@@ -1,6 +1,7 @@
 package markup
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -132,6 +133,15 @@ func updateComponentField(compo reflect.Value, attr Attr) error {
 		}
 
 		field.SetFloat(n)
+
+	case reflect.Struct:
+		s := reflect.New(field.Type())
+
+		if err := json.Unmarshal([]byte(attr.Value), s.Interface()); err != nil {
+			return err
+		}
+
+		field.Set(s.Elem())
 
 	default:
 		log.Warnf("in \033[35m%T\033[00m: field \033[36m%v\033[00m of type \033[34m%T\033[00m can't be mapped",

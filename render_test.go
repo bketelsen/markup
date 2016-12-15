@@ -36,3 +36,7 @@ func TestRenderMarkup(t *testing.T) {
 		t.Error("parse with invalid template should error")
 	}
 }
+
+func TestConvertToJSON(t *testing.T) {
+	t.Log(convertToJSON(42))
+}

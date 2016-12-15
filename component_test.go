@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"html"
+
 	"github.com/murlokswarm/uid"
 )
 
@@ -14,13 +16,18 @@ func (f *Foo) Render() string {
 	return fooXML
 }
 
+type Bar struct {
+	Value int
+}
+
 type PropsTest struct {
 	String       string
 	Bool         bool
 	Int          int
 	Uint         uint
 	Float        float64
-	NotSupported Foo
+	Bar          Bar
+	NotSupported *Foo
 }
 
 func (p *PropsTest) Render() string {
@@ -106,6 +113,7 @@ func TestUpdateComponentFields(t *testing.T) {
 	attrs := AttrList{
 		Attr{Name: "String", Value: "Hello"},
 		Attr{Name: "Int", Value: "42"},
+		// Attr{Name: "Struct", Value: convertToJSON(Bar{Value: 21})},
 	}
 
 	compo := &PropsTest{}
@@ -121,6 +129,10 @@ func TestUpdateComponentFields(t *testing.T) {
 	if compo.Int != 42 {
 		t.Errorf("compo.String should be 42: %v", compo.Int)
 	}
+
+	// if compo.Bar.Value != 21 {
+	// 	t.Errorf("compo.Bar.Value should be 21: %v", compo.Bar.Value)
+	// }
 }
 
 func TestUpdateComponentFieldsError(t *testing.T) {
@@ -186,10 +198,26 @@ func TestUpdateComponentField(t *testing.T) {
 		t.Errorf("compo.Float should be \"%v\": \"%v\"", n, compo.Float)
 	}
 
-	// Float
+	// Struct
+	bar := Bar{
+		Value: 21,
+	}
+	j := convertToJSON(bar)
+	j = html.UnescapeString(j)
+
+	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err != nil {
+		t.Error(err)
+	}
+
+	if n := 21; compo.Bar.Value != n {
+		t.Errorf("compo.Bar.Value should be \"%v\": \"%v\"", n, compo.Bar.Value)
+	}
+
+	// NotSupported
 	if err := updateComponentField(compoValue, Attr{Name: "NotSupported", Value: "Fooooo"}); err != nil {
 		t.Error(err)
 	}
+
 }
 
 func TestUpdateComponentFieldError(t *testing.T) {
@@ -219,6 +247,16 @@ func TestUpdateComponentFieldError(t *testing.T) {
 
 	// Float
 	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42*$"}); err == nil {
+		t.Error("should error")
+	}
+
+	// Struct
+	bar := Bar{
+		Value: 21,
+	}
+	j := convertToJSON(bar)
+
+	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err == nil {
 		t.Error("should error")
 	}
 }
