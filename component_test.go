@@ -1,13 +1,6 @@
 package markup
 
-import (
-	"reflect"
-	"testing"
-
-	"html"
-
-	"github.com/murlokswarm/uid"
-)
+import "testing"
 
 type Foo struct {
 }
@@ -42,221 +35,195 @@ func (p *PropsTest) Render() string {
 	`
 }
 
-func TestRegisterComponent(t *testing.T) {
-	RegisterComponent("Foo", func() Componer {
-		return &Foo{}
-	})
+type CompoNotPtr struct{}
 
-	RegisterComponent("Foo", func() Componer {
-		return &Foo{}
-	})
+func (c CompoNotPtr) Render() string {
+	return `<div></div>`
 }
 
-func TestRegisterComponentPanic(t *testing.T) {
-	defer func() { t.Log(recover()) }()
+type compoNotExported struct{}
 
-	RegisterComponent("foo", func() Componer {
-		return &Foo{}
-	})
+func (c *compoNotExported) Render() string {
+	return `<div></div>`
+}
 
+func TestRegister(t *testing.T) {
+	Register(&Foo{})
+	Register(&Foo{})
+}
+
+func TestRegisterNotPtr(t *testing.T) {
+	defer func() { recover() }()
+	Register(CompoNotPtr{})
 	t.Error("should panic")
 }
 
-func TestComponentToHTML(t *testing.T) {
-	c := &Hello{}
-	ctx := uid.Context()
-
-	if _, err := ComponentToHTML(c); err == nil {
-		t.Error("should error")
-	}
-
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	HTML, err := ComponentToHTML(c)
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log(HTML)
+func TestRegisterNotExported(t *testing.T) {
+	defer func() { recover() }()
+	Register(&compoNotExported{})
+	t.Error("should panic")
 }
 
-func TestIsComponentName(t *testing.T) {
-	if name := "Foo"; !IsComponentName(name) {
-		t.Errorf("%v should be a component name", name)
-	}
+// func TestCreateComponent(t *testing.T) {
+// 	if _, err := createComponent("Foo"); err != nil {
+// 		t.Error(err)
+// 	}
+// }
 
-	if name := "foo"; IsComponentName(name) {
-		t.Errorf("%v should not be a component name", name)
-	}
+// func TestCreateComponentError(t *testing.T) {
+// 	if _, err := createComponent("HyperFoo"); err == nil {
+// 		t.Error("should error")
+// 	}
+// }
 
-	if IsComponentName("") {
-		t.Error("empty string should not be a component name")
-	}
-}
+// func TestUpdateComponentFields(t *testing.T) {
+// 	attrs := AttrList{
+// 		Attr{Name: "String", Value: "Hello"},
+// 		Attr{Name: "Int", Value: "42"},
+// 		// Attr{Name: "Struct", Value: convertToJSON(Bar{Value: 21})},
+// 	}
 
-func TestCreateComponent(t *testing.T) {
-	if _, err := createComponent("Foo"); err != nil {
-		t.Error(err)
-	}
-}
+// 	compo := &PropsTest{}
 
-func TestCreateComponentError(t *testing.T) {
-	if _, err := createComponent("HyperFoo"); err == nil {
-		t.Error("should error")
-	}
-}
+// 	if err := updateComponentFields(compo, attrs); err != nil {
+// 		t.Error(err)
+// 	}
 
-func TestUpdateComponentFields(t *testing.T) {
-	attrs := AttrList{
-		Attr{Name: "String", Value: "Hello"},
-		Attr{Name: "Int", Value: "42"},
-		// Attr{Name: "Struct", Value: convertToJSON(Bar{Value: 21})},
-	}
+// 	if compo.String != "Hello" {
+// 		t.Errorf("compo.String should be \"Hello\": \"%v\"", compo.String)
+// 	}
 
-	compo := &PropsTest{}
+// 	if compo.Int != 42 {
+// 		t.Errorf("compo.String should be 42: %v", compo.Int)
+// 	}
 
-	if err := updateComponentFields(compo, attrs); err != nil {
-		t.Error(err)
-	}
+// 	// if compo.Bar.Value != 21 {
+// 	// 	t.Errorf("compo.Bar.Value should be 21: %v", compo.Bar.Value)
+// 	// }
+// }
 
-	if compo.String != "Hello" {
-		t.Errorf("compo.String should be \"Hello\": \"%v\"", compo.String)
-	}
+// func TestUpdateComponentFieldsError(t *testing.T) {
+// 	attrs := AttrList{
+// 		Attr{Name: "String", Value: "Hello"},
+// 		Attr{Name: "Int", Value: "42.42"},
+// 	}
 
-	if compo.Int != 42 {
-		t.Errorf("compo.String should be 42: %v", compo.Int)
-	}
+// 	compo := &PropsTest{}
 
-	// if compo.Bar.Value != 21 {
-	// 	t.Errorf("compo.Bar.Value should be 21: %v", compo.Bar.Value)
-	// }
-}
+// 	if err := updateComponentFields(compo, attrs); err == nil {
+// 		t.Error("should error")
+// 	}
+// }
 
-func TestUpdateComponentFieldsError(t *testing.T) {
-	attrs := AttrList{
-		Attr{Name: "String", Value: "Hello"},
-		Attr{Name: "Int", Value: "42.42"},
-	}
+// func TestUpdateComponentField(t *testing.T) {
+// 	compo := &PropsTest{}
+// 	compoValue := reflect.ValueOf(compo)
+// 	compoValue = reflect.Indirect(compoValue)
 
-	compo := &PropsTest{}
+// 	// String
+// 	if err := updateComponentField(compoValue, Attr{Name: "String", Value: "Hello, World"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	if err := updateComponentFields(compo, attrs); err == nil {
-		t.Error("should error")
-	}
-}
+// 	if hello := "Hello, World"; compo.String != hello {
+// 		t.Errorf("compo.String should be \"%v\": \"%v\"", hello, compo.String)
+// 	}
 
-func TestUpdateComponentField(t *testing.T) {
-	compo := &PropsTest{}
-	compoValue := reflect.ValueOf(compo)
-	compoValue = reflect.Indirect(compoValue)
+// 	// Bool
+// 	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "true"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	// String
-	if err := updateComponentField(compoValue, Attr{Name: "String", Value: "Hello, World"}); err != nil {
-		t.Error(err)
-	}
+// 	if b := true; compo.Bool != b {
+// 		t.Errorf("compo.Bool should be \"%v\": \"%v\"", b, compo.Bool)
+// 	}
 
-	if hello := "Hello, World"; compo.String != hello {
-		t.Errorf("compo.String should be \"%v\": \"%v\"", hello, compo.String)
-	}
+// 	// Int
+// 	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	// Bool
-	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "true"}); err != nil {
-		t.Error(err)
-	}
+// 	if n := -42; compo.Int != n {
+// 		t.Errorf("compo.Int should be \"%v\": \"%v\"", n, compo.Int)
+// 	}
 
-	if b := true; compo.Bool != b {
-		t.Errorf("compo.Bool should be \"%v\": \"%v\"", b, compo.Bool)
-	}
+// 	// Uint
+// 	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "42"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	// Int
-	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42"}); err != nil {
-		t.Error(err)
-	}
+// 	if n := uint(42); compo.Uint != n {
+// 		t.Errorf("compo.Uint should be \"%v\": \"%v\"", n, compo.Uint)
+// 	}
 
-	if n := -42; compo.Int != n {
-		t.Errorf("compo.Int should be \"%v\": \"%v\"", n, compo.Int)
-	}
+// 	// Float
+// 	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42.42"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	// Uint
-	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "42"}); err != nil {
-		t.Error(err)
-	}
+// 	if n := 42.42; compo.Float != n {
+// 		t.Errorf("compo.Float should be \"%v\": \"%v\"", n, compo.Float)
+// 	}
 
-	if n := uint(42); compo.Uint != n {
-		t.Errorf("compo.Uint should be \"%v\": \"%v\"", n, compo.Uint)
-	}
+// 	// Struct
+// 	bar := Bar{
+// 		Value: 21,
+// 	}
+// 	j := convertToJSON(bar)
+// 	j = html.UnescapeString(j)
 
-	// Float
-	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42.42"}); err != nil {
-		t.Error(err)
-	}
+// 	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	if n := 42.42; compo.Float != n {
-		t.Errorf("compo.Float should be \"%v\": \"%v\"", n, compo.Float)
-	}
+// 	if n := 21; compo.Bar.Value != n {
+// 		t.Errorf("compo.Bar.Value should be \"%v\": \"%v\"", n, compo.Bar.Value)
+// 	}
 
-	// Struct
-	bar := Bar{
-		Value: 21,
-	}
-	j := convertToJSON(bar)
-	j = html.UnescapeString(j)
+// 	// NotSupported
+// 	if err := updateComponentField(compoValue, Attr{Name: "NotSupported", Value: "Fooooo"}); err != nil {
+// 		t.Error(err)
+// 	}
 
-	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err != nil {
-		t.Error(err)
-	}
+// }
 
-	if n := 21; compo.Bar.Value != n {
-		t.Errorf("compo.Bar.Value should be \"%v\": \"%v\"", n, compo.Bar.Value)
-	}
+// func TestUpdateComponentFieldError(t *testing.T) {
+// 	compo := &PropsTest{}
+// 	compoValue := reflect.ValueOf(compo)
+// 	compoValue = reflect.Indirect(compoValue)
 
-	// NotSupported
-	if err := updateComponentField(compoValue, Attr{Name: "NotSupported", Value: "Fooooo"}); err != nil {
-		t.Error(err)
-	}
+// 	// No field
+// 	if err := updateComponentField(compoValue, Attr{Name: "Foo"}); err == nil {
+// 		t.Error("should error")
+// 	}
 
-}
+// 	// Bool
+// 	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "foo"}); err == nil {
+// 		t.Error("should error")
+// 	}
 
-func TestUpdateComponentFieldError(t *testing.T) {
-	compo := &PropsTest{}
-	compoValue := reflect.ValueOf(compo)
-	compoValue = reflect.Indirect(compoValue)
+// 	// Int
+// 	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42.42"}); err == nil {
+// 		t.Error("should error")
+// 	}
 
-	// No field
-	if err := updateComponentField(compoValue, Attr{Name: "Foo"}); err == nil {
-		t.Error("should error")
-	}
+// 	// Uint
+// 	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "-42"}); err == nil {
+// 		t.Error("should error")
+// 	}
 
-	// Bool
-	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "foo"}); err == nil {
-		t.Error("should error")
-	}
+// 	// Float
+// 	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42*$"}); err == nil {
+// 		t.Error("should error")
+// 	}
 
-	// Int
-	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42.42"}); err == nil {
-		t.Error("should error")
-	}
+// 	// Struct
+// 	bar := Bar{
+// 		Value: 21,
+// 	}
+// 	j := convertToJSON(bar)
 
-	// Uint
-	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "-42"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Float
-	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42*$"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Struct
-	bar := Bar{
-		Value: 21,
-	}
-	j := convertToJSON(bar)
-
-	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err == nil {
-		t.Error("should error")
-	}
-}
+// 	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err == nil {
+// 		t.Error("should error")
+// 	}
+// }

@@ -1,153 +1,145 @@
 package markup
 
-import (
-	"fmt"
-	"reflect"
+// // Mounter is the interface that wraps OnMount method.
+// // OnMount si called when a component is mounted.
+// type Mounter interface {
+// 	OnMount()
+// }
 
-	"github.com/murlokswarm/log"
-	"github.com/murlokswarm/uid"
-)
+// // Dismounter is the interface that wraps OnDismount method.
+// // OnDismount si called when a component is dismounted.
+// type Dismounter interface {
+// 	OnDismount()
+// }
 
-// Mounter is the interface that wraps OnMount method.
-// OnMount si called when a component is mounted.
-type Mounter interface {
-	OnMount()
-}
+// // Mount maps a component and its underlying elements.
+// // It enable bidirectional communication between a component and the
+// // underlying driver.
+// func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
+// 	if v := reflect.ValueOf(c); v.Kind() != reflect.Ptr {
+// 		err = fmt.Errorf("Mount accepts only pointers: \033[31m%T\033[00m", c)
+// 		return
+// 	}
 
-// Dismounter is the interface that wraps OnDismount method.
-// OnDismount si called when a component is dismounted.
-type Dismounter interface {
-	OnDismount()
-}
+// 	if compo, mounted := components[c]; mounted {
+// 		// Go uses the same reference for different instances of a same empty struct.
+// 		// This prevents from mounting a same empty struct.
+// 		if t := reflect.TypeOf(c).Elem(); t.NumField() == 0 {
+// 			compo.Count++
+// 			return compo.Root, nil
+// 		}
+// 		return nil, fmt.Errorf("%+v is already mounted", c)
+// 	}
 
-// Mount maps a component and its underlying elements.
-// It enable bidirectional communication between a component and the
-// underlying driver.
-func Mount(c Componer, ctx uid.ID) (root *Element, err error) {
-	if v := reflect.ValueOf(c); v.Kind() != reflect.Ptr {
-		err = fmt.Errorf("Mount accepts only pointers: \033[31m%T\033[00m", c)
-		return
-	}
+// 	rendered, err := render(c.Render(), c)
+// 	if err != nil {
+// 		return
+// 	}
 
-	if compo, mounted := components[c]; mounted {
-		// Go uses the same reference for different instances of a same empty struct.
-		// This prevents from mounting a same empty struct.
-		if t := reflect.TypeOf(c).Elem(); t.NumField() == 0 {
-			compo.Count++
-			return compo.Root, nil
-		}
-		return nil, fmt.Errorf("%+v is already mounted", c)
-	}
+// 	if root, err = Decode(rendered); err != nil {
+// 		return
+// 	}
 
-	rendered, err := render(c.Render(), c)
-	if err != nil {
-		return
-	}
+// 	if root.Type != HTML {
+// 		err = fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
+// 		return
+// 	}
 
-	if root, err = Decode(rendered); err != nil {
-		return
-	}
+// 	if err = mount(root, c, ctx); err != nil {
+// 		return
+// 	}
 
-	if root.Type != HTML {
-		err = fmt.Errorf("component root must be a standard HTML tag: %T %+v", c, c)
-		return
-	}
+// 	components[c] = &component{
+// 		Count: 1,
+// 		Root:  root,
+// 	}
 
-	if err = mount(root, c, ctx); err != nil {
-		return
-	}
+// 	if mounter, isMounter := c.(Mounter); isMounter {
+// 		mounter.OnMount()
+// 	}
+// 	return
+// }
 
-	components[c] = &component{
-		Count: 1,
-		Root:  root,
-	}
+// func mount(e *Element, c Componer, ctx uid.ID) (err error) {
+// 	switch e.Type {
+// 	case HTML:
+// 		return mountElement(e, c, ctx)
 
-	if mounter, isMounter := c.(Mounter); isMounter {
-		mounter.OnMount()
-	}
-	return
-}
+// 	case Component:
+// 		return mountComponent(e, ctx)
+// 	}
+// 	return
+// }
 
-func mount(e *Element, c Componer, ctx uid.ID) (err error) {
-	switch e.Type {
-	case HTML:
-		return mountElement(e, c, ctx)
+// func mountElement(e *Element, c Componer, ctx uid.ID) error {
+// 	e.ID = uid.Elem()
+// 	e.ContextID = ctx
+// 	e.Component = c
+// 	elements[e.ID] = e
 
-	case Component:
-		return mountComponent(e, ctx)
-	}
-	return
-}
+// 	for _, child := range e.Children {
+// 		if err := mount(child, c, ctx); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-func mountElement(e *Element, c Componer, ctx uid.ID) error {
-	e.ID = uid.Elem()
-	e.ContextID = ctx
-	e.Component = c
-	elements[e.ID] = e
+// func mountComponent(e *Element, ctx uid.ID) error {
+// 	c, err := createComponent(e.Name)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	for _, child := range e.Children {
-		if err := mount(child, c, ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// 	if err = updateComponentFields(c, e.Attributes); err != nil {
+// 		return err
+// 	}
 
-func mountComponent(e *Element, ctx uid.ID) error {
-	c, err := createComponent(e.Name)
-	if err != nil {
-		return err
-	}
+// 	root, err := Mount(c, ctx)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if err = updateComponentFields(c, e.Attributes); err != nil {
-		return err
-	}
+// 	root.Parent = e.Parent
+// 	e.ContextID = ctx
+// 	e.Component = c
+// 	return err
+// }
 
-	root, err := Mount(c, ctx)
-	if err != nil {
-		return err
-	}
+// // Dismount dismounts a component.
+// func Dismount(c Componer) {
+// 	compo, mounted := components[c]
+// 	if !mounted {
+// 		log.Warnf("%#v is already dismounted", c)
+// 		return
+// 	}
 
-	root.Parent = e.Parent
-	e.ContextID = ctx
-	e.Component = c
-	return err
-}
+// 	// Go uses the same reference for different instances of a same empty struct.
+// 	// This prevents from dismounting an empty struct that still remains in another context.
+// 	if compo.Count--; compo.Count == 0 {
+// 		dismount(compo.Root)
+// 		delete(components, c)
 
-// Dismount dismounts a component.
-func Dismount(c Componer) {
-	compo, mounted := components[c]
-	if !mounted {
-		log.Warnf("%#v is already dismounted", c)
-		return
-	}
+// 		if dismounter, isDismounter := c.(Dismounter); isDismounter {
+// 			dismounter.OnDismount()
+// 		}
+// 	}
+// 	return
+// }
 
-	// Go uses the same reference for different instances of a same empty struct.
-	// This prevents from dismounting an empty struct that still remains in another context.
-	if compo.Count--; compo.Count == 0 {
-		dismount(compo.Root)
-		delete(components, c)
+// func dismount(e *Element) {
+// 	switch e.Type {
+// 	case HTML:
+// 		dismountElement(e)
 
-		if dismounter, isDismounter := c.(Dismounter); isDismounter {
-			dismounter.OnDismount()
-		}
-	}
-	return
-}
+// 	case Component:
+// 		Dismount(e.Component)
+// 	}
+// }
 
-func dismount(e *Element) {
-	switch e.Type {
-	case HTML:
-		dismountElement(e)
-
-	case Component:
-		Dismount(e.Component)
-	}
-}
-
-func dismountElement(e *Element) {
-	for _, child := range e.Children {
-		dismount(child)
-	}
-	delete(elements, e.ID)
-}
+// func dismountElement(e *Element) {
+// 	for _, child := range e.Children {
+// 		dismount(child)
+// 	}
+// 	delete(elements, e.ID)
+// }

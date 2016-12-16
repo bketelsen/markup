@@ -1,146 +1,146 @@
 package markup
 
-import (
-	"reflect"
-	"testing"
+// import (
+// 	"reflect"
+// 	"testing"
 
-	"github.com/murlokswarm/log"
-	"github.com/murlokswarm/uid"
-)
+// 	"github.com/murlokswarm/log"
+// 	"github.com/murlokswarm/uid"
+// )
 
-type ComponentWithFunc struct {
-	Name string
-}
+// type ComponentWithFunc struct {
+// 	Name string
+// }
 
-func (c *ComponentWithFunc) OnCallTest() {
-	log.Info("OnCallTest")
-}
+// func (c *ComponentWithFunc) OnCallTest() {
+// 	log.Info("OnCallTest")
+// }
 
-func (c *ComponentWithFunc) OnCallTestWithArg(arg string) {
-	log.Infof("OnCallTestWithArg(%v)", arg)
-}
+// func (c *ComponentWithFunc) OnCallTestWithArg(arg string) {
+// 	log.Infof("OnCallTestWithArg(%v)", arg)
+// }
 
-func (c *ComponentWithFunc) OnCallTestWithMultipleArgs(arg int, number int) {
-	log.Info("OnCallTestWithMultipleArgs")
-}
+// func (c *ComponentWithFunc) OnCallTestWithMultipleArgs(arg int, number int) {
+// 	log.Info("OnCallTestWithMultipleArgs")
+// }
 
-func (c *ComponentWithFunc) Render() string {
-	return `
-<h1>{{.Name}}</h1>
-    `
-}
+// func (c *ComponentWithFunc) Render() string {
+// 	return `
+// <h1>{{.Name}}</h1>
+//     `
+// }
 
-func init() {
-	RegisterComponent("ComponentWithFunc", func() Componer {
-		return &ComponentWithFunc{}
-	})
-}
+// func init() {
+// 	RegisterComponent("ComponentWithFunc", func() Componer {
+// 		return &ComponentWithFunc{}
+// 	})
+// }
 
-type FuncArg struct {
-	Number int
-	String string
-}
+// type FuncArg struct {
+// 	Number int
+// 	String string
+// }
 
-func TestCall(t *testing.T) {
-	c := &ComponentWithFunc{}
-	ctx := uid.Context()
+// func TestCall(t *testing.T) {
+// 	c := &ComponentWithFunc{}
+// 	ctx := uid.Context()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
+// 	if _, err := Mount(c, ctx); err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer Dismount(c)
 
-	rootElem := components[c].Root
+// 	rootElem := components[c].Root
 
-	// no arg
-	if err := Call(rootElem.ID, "OnCallTest", ""); err != nil {
-		t.Error(err)
-	}
+// 	// no arg
+// 	if err := Call(rootElem.ID, "OnCallTest", ""); err != nil {
+// 		t.Error(err)
+// 	}
 
-	// arg
-	if err := Call(rootElem.ID, "OnCallTestWithArg", `"42"`); err != nil {
-		t.Error(err)
-	}
-}
+// 	// arg
+// 	if err := Call(rootElem.ID, "OnCallTestWithArg", `"42"`); err != nil {
+// 		t.Error(err)
+// 	}
+// }
 
-func TestCallError(t *testing.T) {
-	c := &ComponentWithFunc{}
-	ctx := uid.Context()
+// func TestCallError(t *testing.T) {
+// 	c := &ComponentWithFunc{}
+// 	ctx := uid.Context()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
+// 	if _, err := Mount(c, ctx); err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer Dismount(c)
 
-	rootElem := components[c].Root
+// 	rootElem := components[c].Root
 
-	// undefined method
-	Call(rootElem.ID, "OnCallFoo", "")
+// 	// undefined method
+// 	Call(rootElem.ID, "OnCallFoo", "")
 
-	// multiple args
-	Call(rootElem.ID, "OnCallTestWithMultipleArgs", "")
+// 	// multiple args
+// 	Call(rootElem.ID, "OnCallTestWithMultipleArgs", "")
 
-	// invalid json string
-	Call(rootElem.ID, "OnCallTestWithArg", "42")
+// 	// invalid json string
+// 	Call(rootElem.ID, "OnCallTestWithArg", "42")
 
-	// unmounted elem
-	if err := Call(uid.Elem(), "OnCallTest", ""); err == nil {
-		t.Error("should error")
-	}
-}
+// 	// unmounted elem
+// 	if err := Call(uid.Elem(), "OnCallTest", ""); err == nil {
+// 		t.Error("should error")
+// 	}
+// }
 
-func TestCreateCallArg(t *testing.T) {
-	var arg FuncArg
-	var number float64
-	var str string
-	var ret reflect.Value
-	var converted bool
-	var err error
+// func TestCreateCallArg(t *testing.T) {
+// 	var arg FuncArg
+// 	var number float64
+// 	var str string
+// 	var ret reflect.Value
+// 	var converted bool
+// 	var err error
 
-	// struct
-	if ret, err = createCallArg(reflect.TypeOf(arg), `{"Number": 42, "String": "Hello"}`); err != nil {
-		t.Fatal(err)
-	}
+// 	// struct
+// 	if ret, err = createCallArg(reflect.TypeOf(arg), `{"Number": 42, "String": "Hello"}`); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	expectedArg := FuncArg{Number: 42, String: "Hello"}
+// 	expectedArg := FuncArg{Number: 42, String: "Hello"}
 
-	if arg, converted = ret.Interface().(FuncArg); !converted {
-		t.Fatal("type conversion failed")
-	}
+// 	if arg, converted = ret.Interface().(FuncArg); !converted {
+// 		t.Fatal("type conversion failed")
+// 	}
 
-	if arg != expectedArg {
-		t.Errorf("arg should be %v: %v", expectedArg, arg)
-	}
+// 	if arg != expectedArg {
+// 		t.Errorf("arg should be %v: %v", expectedArg, arg)
+// 	}
 
-	// number
-	if ret, err = createCallArg(reflect.TypeOf(number), "42"); err != nil {
-		t.Fatal(err)
-	}
+// 	// number
+// 	if ret, err = createCallArg(reflect.TypeOf(number), "42"); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	if number, converted = ret.Interface().(float64); !converted {
-		t.Fatal("type conversion failed")
-	}
+// 	if number, converted = ret.Interface().(float64); !converted {
+// 		t.Fatal("type conversion failed")
+// 	}
 
-	if expectedNumber := 42.0; number != expectedNumber {
-		t.Errorf("arg should be %v: %v", expectedNumber, number)
-	}
+// 	if expectedNumber := 42.0; number != expectedNumber {
+// 		t.Errorf("arg should be %v: %v", expectedNumber, number)
+// 	}
 
-	// string
-	if ret, err = createCallArg(reflect.TypeOf(str), `"Hello"`); err != nil {
-		t.Fatal(err)
-	}
+// 	// string
+// 	if ret, err = createCallArg(reflect.TypeOf(str), `"Hello"`); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	if str, converted = ret.Interface().(string); !converted {
-		t.Fatal("type conversion failed")
-	}
+// 	if str, converted = ret.Interface().(string); !converted {
+// 		t.Fatal("type conversion failed")
+// 	}
 
-	if expectedStr := "Hello"; str != expectedStr {
-		t.Errorf("arg should be %v: %v", expectedStr, str)
-	}
-}
+// 	if expectedStr := "Hello"; str != expectedStr {
+// 		t.Errorf("arg should be %v: %v", expectedStr, str)
+// 	}
+// }
 
-func TestCreateCallArgError(t *testing.T) {
-	if _, err := createCallArg(reflect.TypeOf("str"), "Hello"); err == nil {
-		t.Error("should error")
-	}
-}
+// func TestCreateCallArgError(t *testing.T) {
+// 	if _, err := createCallArg(reflect.TypeOf("str"), "Hello"); err == nil {
+// 		t.Error("should error")
+// 	}
+// }

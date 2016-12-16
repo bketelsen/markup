@@ -1,18 +1,16 @@
 package markup
 
 import (
-	"bytes"
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 )
 
 type decoder struct {
 	xmlDecoder *xml.Decoder
-	root       *Element
-	current    *Element
+	root       *Node
+	current    *Node
 }
 
 func newDecoder(r io.Reader) *decoder {
@@ -21,7 +19,7 @@ func newDecoder(r io.Reader) *decoder {
 	}
 }
 
-func (d *decoder) Decode() (rootElem *Element, err error) {
+func (d *decoder) Decode() (root *Node, err error) {
 	if err = d.next(); err != nil {
 		return
 	}
@@ -31,7 +29,7 @@ func (d *decoder) Decode() (rootElem *Element, err error) {
 		return
 	}
 
-	rootElem = d.root
+	root = d.root
 	return
 }
 
@@ -47,17 +45,18 @@ func (d *decoder) next() error {
 
 	switch t := token.(type) {
 	case xml.StartElement:
-		elem := newElement(t, d.current)
+		n := elementToNode(t)
 
 		if d.root == nil {
-			d.root = elem
+			d.root = n
 		}
 
 		if d.current != nil {
-			d.current.Children = append(d.current.Children, elem)
+			d.current.Children = append(d.current.Children, n)
 		}
 
-		d.current = elem
+		n.Parent = d.current
+		d.current = n
 
 	case xml.EndElement:
 		if d.current.Parent != nil {
@@ -65,25 +64,45 @@ func (d *decoder) next() error {
 		}
 
 	case xml.CharData:
-		text := strings.TrimSpace(string(t))
-		if len(text) == 0 {
+		n := charDataToNode(t)
+
+		if len(n.Text) == 0 {
 			break
 		}
 
-		if d.current == nil {
-			return fmt.Errorf("\"%v\" must be surrounded by HTML tags", t)
+		if d.root == nil {
+			return errors.New("text nodes cannot be root")
 		}
 
-		elem := newTextElement(text, d.current)
-		d.current.Children = append(d.current.Children, elem)
+		d.current.Children = append(d.current.Children, n)
 	}
 	return d.next()
 }
 
-// Decode translates an markup string to an element tree.
-// Returns the root element of the tree.
-func Decode(s string) (*Element, error) {
-	r := bytes.NewBufferString(s)
-	d := newDecoder(r)
-	return d.Decode()
+func elementToNode(e xml.StartElement) *Node {
+	tag := e.Name.Local
+	nodeType := HTMLNode
+
+	if isComponentTag(tag) {
+		nodeType = ComponentNode
+	}
+
+	attributes := map[string]string{}
+
+	for _, attr := range e.Attr {
+		attributes[attr.Name.Local] = attr.Value
+	}
+
+	return &Node{
+		Type:       nodeType,
+		Tag:        tag,
+		Attributes: attributes,
+	}
+}
+
+func charDataToNode(d xml.CharData) *Node {
+	return &Node{
+		Type: TextNode,
+		Text: strings.TrimSpace(string(d)),
+	}
 }

@@ -1,10 +1,8 @@
 package markup
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/murlokswarm/log"
 )
@@ -24,130 +22,124 @@ type Componer interface {
 
 type component struct {
 	Count int
-	Root  *Element
+	Root  *Node
 }
 
-// RegisterComponent registers a component builder. It allow to know which
-// component should be built when name is found into a markup.
-// Should be called in a init() function, one time per component.
-func RegisterComponent(name string, b func() Componer) {
-	if !IsComponentName(name) {
-		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
+// Register registers a component. Allows the component to be dynamically
+// created when a tag with its struct name is found into a markup.
+func Register(c Componer) {
+	v := reflect.ValueOf(c)
+
+	if k := v.Kind(); k != reflect.Ptr {
+		log.Panicf("register accepts only components of kind %v: %v", reflect.Ptr, k)
 	}
 
-	if _, ok := compoBuilders[name]; ok {
-		log.Infof("component builder for \033[35m%v\033[00m is overloaded with %T", name, b)
+	t := v.Type().Elem()
+	tag := t.Name()
+
+	if !isComponentTag(tag) {
+		log.Panicf("non exported components cannot be registered: %v", t)
 	}
 
-	compoBuilders[name] = b
+	compoBuilders[tag] = func() Componer {
+		v := reflect.New(t)
+		return v.Interface().(Componer)
+	}
+	log.Info("%v has been registered under the tag %v", t, tag)
 }
 
-// ComponentToHTML returns the HTML representation of c.
-// returns an error if c is not mounted.
-func ComponentToHTML(c Componer) (HTML string, err error) {
-	var rootElem *Element
+// Root returns the root node of c.
+func Root(c Componer) *Node {
+	compo, mounted := components[c]
+	if !mounted {
+		log.Panicf("%#v is not mounted", c)
+	}
+	return compo.Root
+}
 
-	if rootElem, err = ComponentRoot(c); err != nil {
+// Markup returns the markup of c.
+func Markup(c Componer) string {
+	return Root(c).Markup()
+}
+
+func componentFromTag(tag string) (c Componer, err error) {
+	b, registered := compoBuilders[tag]
+	if !registered {
+		err = fmt.Errorf("component tagged %v is not registered", tag)
 		return
 	}
 
-	HTML = rootElem.HTML()
+	c = b()
 	return
 }
 
-// ComponentRoot returns the root element of c.
-// returns an error if c is not mounted.
-func ComponentRoot(c Componer) (root *Element, err error) {
-	if compo, mounted := components[c]; mounted {
-		return compo.Root, nil
-	}
+// func updateComponentFields(c Componer, attrs AttrList) error {
+// 	compo := reflect.Indirect(reflect.ValueOf(c))
 
-	return nil, fmt.Errorf("%#v is not mounted", c)
-}
+// 	for _, attr := range attrs {
+// 		if err := updateComponentField(compo, attr); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-// IsComponentName return true if v is a component name, otherwise false.
-func IsComponentName(v string) bool {
-	if len(v) == 0 {
-		return false
-	}
-	return v[0] >= 'A' && v[0] <= 'Z'
-}
+// func updateComponentField(compo reflect.Value, attr Attr) error {
+// 	field := compo.FieldByName(attr.Name)
+// 	if !field.IsValid() {
+// 		return fmt.Errorf("no field %v in %T", attr.Name, compo.Interface())
+// 	}
 
-func createComponent(name string) (c Componer, err error) {
-	builder, registered := compoBuilders[name]
-	if !registered {
-		return nil, fmt.Errorf("component %v is not registered", name)
-	}
-	return builder(), nil
-}
+// 	switch field.Kind() {
+// 	case reflect.String:
+// 		field.SetString(attr.Value)
 
-func updateComponentFields(c Componer, attrs AttrList) error {
-	compo := reflect.Indirect(reflect.ValueOf(c))
+// 	case reflect.Bool:
+// 		if attr.Value != "true" && attr.Value != "false" {
+// 			return fmt.Errorf("boolean attributes in a component must be set to true or false: %v", attr.Value)
+// 		}
 
-	for _, attr := range attrs {
-		if err := updateComponentField(compo, attr); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// 		b, _ := strconv.ParseBool(attr.Value)
+// 		field.SetBool(b)
 
-func updateComponentField(compo reflect.Value, attr Attr) error {
-	field := compo.FieldByName(attr.Name)
-	if !field.IsValid() {
-		return fmt.Errorf("no field %v in %T", attr.Name, compo.Interface())
-	}
+// 	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
+// 		n, err := strconv.ParseInt(attr.Value, 0, 64)
+// 		if err != nil {
+// 			return err
+// 		}
 
-	switch field.Kind() {
-	case reflect.String:
-		field.SetString(attr.Value)
+// 		field.SetInt(n)
 
-	case reflect.Bool:
-		if attr.Value != "true" && attr.Value != "false" {
-			return fmt.Errorf("boolean attributes in a component must be set to true or false: %v", attr.Value)
-		}
+// 	case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uintptr:
+// 		n, err := strconv.ParseUint(attr.Value, 0, 64)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		b, _ := strconv.ParseBool(attr.Value)
-		field.SetBool(b)
+// 		field.SetUint(n)
 
-	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
-		n, err := strconv.ParseInt(attr.Value, 0, 64)
-		if err != nil {
-			return err
-		}
+// 	case reflect.Float64, reflect.Float32:
+// 		n, err := strconv.ParseFloat(attr.Value, 64)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		field.SetInt(n)
+// 		field.SetFloat(n)
 
-	case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uintptr:
-		n, err := strconv.ParseUint(attr.Value, 0, 64)
-		if err != nil {
-			return err
-		}
+// 	case reflect.Struct:
+// 		s := reflect.New(field.Type())
 
-		field.SetUint(n)
+// 		if err := json.Unmarshal([]byte(attr.Value), s.Interface()); err != nil {
+// 			return err
+// 		}
 
-	case reflect.Float64, reflect.Float32:
-		n, err := strconv.ParseFloat(attr.Value, 64)
-		if err != nil {
-			return err
-		}
+// 		field.Set(s.Elem())
 
-		field.SetFloat(n)
-
-	case reflect.Struct:
-		s := reflect.New(field.Type())
-
-		if err := json.Unmarshal([]byte(attr.Value), s.Interface()); err != nil {
-			return err
-		}
-
-		field.Set(s.Elem())
-
-	default:
-		log.Warnf("in \033[35m%T\033[00m: field \033[36m%v\033[00m of type \033[34m%T\033[00m can't be mapped",
-			compo.Interface(),
-			attr.Name,
-			field.Interface())
-	}
-	return nil
-}
+// 	default:
+// 		log.Warnf("in \033[35m%T\033[00m: field \033[36m%v\033[00m of type \033[34m%T\033[00m can't be mapped",
+// 			compo.Interface(),
+// 			attr.Name,
+// 			field.Interface())
+// 	}
+// 	return nil
+// }
