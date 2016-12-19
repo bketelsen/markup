@@ -1,6 +1,7 @@
 package markup
 
 import (
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -87,7 +88,7 @@ func elementToNode(e xml.StartElement) *Node {
 		nodeType = ComponentNode
 	}
 
-	attributes := map[string]string{}
+	attributes := AttributeMap{}
 
 	for _, attr := range e.Attr {
 		attributes[attr.Name.Local] = attr.Value
@@ -105,4 +106,10 @@ func charDataToNode(d xml.CharData) *Node {
 		Type: TextNode,
 		Text: strings.TrimSpace(string(d)),
 	}
+}
+
+func stringToNode(v string) (root *Node, err error) {
+	b := bytes.NewBufferString(v)
+	dec := newDecoder(b)
+	return dec.Decode()
 }

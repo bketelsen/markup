@@ -37,11 +37,13 @@ var (
 // Node represents a markup node.
 type Node struct {
 	ID         uid.ID
+	ContextID  uid.ID
 	Type       NodeType
 	Tag        string
 	Text       string
-	Attributes map[string]string
+	Attributes AttributeMap
 	Component  Componer
+	Mount      Componer
 	Parent     *Node
 	Children   []*Node
 }
@@ -128,6 +130,7 @@ func (n *Node) markup(indent int) string {
 		b.WriteRune('\n')
 	}
 
+	b.WriteString(indt)
 	b.WriteString("</")
 	b.WriteString(n.Tag)
 	b.WriteRune('>')

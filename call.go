@@ -1,62 +1,53 @@
 package markup
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"reflect"
+import (
+	"encoding/json"
+	"reflect"
 
-// 	"github.com/murlokswarm/log"
-// 	"github.com/murlokswarm/uid"
-// )
+	"github.com/murlokswarm/log"
+	"github.com/murlokswarm/uid"
+)
 
-// // Call invokes a method from the component which own the element associated to
-// // elementID.
-// func Call(elementID uid.ID, componentMethodName string, jsonArg string) error {
-// 	elem, mounted := elements[elementID]
-// 	if !mounted {
-// 		return fmt.Errorf("element with id %v is not mounted", elementID)
-// 	}
+// Call invokes the method named by methodName from the component which own
+// the node associated to nodeID.
+// Panic if the node is nonexistent.
+func Call(nodeID uid.ID, methodName string, argJSON string) {
+	n, mounted := nodes[nodeID]
+	if !mounted {
+		log.Panicf("node with ID = %v does not belong to a mounted component.", nodeID)
+	}
 
-// 	component := elem.Component
-// 	componentValue := reflect.ValueOf(component)
-// 	methodValue := componentValue.MethodByName(componentMethodName)
+	c := n.Mount
+	v := reflect.ValueOf(c)
+	m := v.MethodByName(methodName)
 
-// 	if !methodValue.IsValid() {
-// 		log.Warnf("%T doesn't have a method named %v", component, componentMethodName)
-// 		return nil
-// 	}
+	if !m.IsValid() {
+		log.Warnf("%T doesn't have a method named %v", c, methodName)
+		return
+	}
 
-// 	methodType := methodValue.Type()
+	mt := m.Type()
 
-// 	switch numIn := methodType.NumIn(); numIn {
-// 	case 0:
-// 		methodValue.Call([]reflect.Value{})
-// 		return nil
+	switch numIn := mt.NumIn(); numIn {
+	case 0:
+		m.Call([]reflect.Value{})
+		return
 
-// 	case 1:
-// 		argType := methodType.In(0)
+	case 1:
+		at := mt.In(0)
+		arg := createCallArg(at, argJSON)
+		m.Call([]reflect.Value{arg})
+		return
 
-// 		arg, err := createCallArg(argType, jsonArg)
-// 		if err != nil {
-// 			return err
-// 		}
+	default:
+		log.Panicf("%T %v should have 1 parameter max: %v", c, methodName, mt)
+		return
+	}
+}
 
-// 		methodValue.Call([]reflect.Value{arg})
-// 		return nil
-
-// 	default:
-// 		return fmt.Errorf("%T.%v must have 1 parameter max: %v", component, componentMethodName, methodType)
-// 	}
-// }
-
-// func createCallArg(t reflect.Type, jsonArg string) (arg reflect.Value, err error) {
-// 	arg = reflect.New(t)
-// 	i := arg.Interface()
-
-// 	if err = json.Unmarshal([]byte(jsonArg), i); err != nil {
-// 		return
-// 	}
-
-// 	arg = arg.Elem()
-// 	return
-// }
+func createCallArg(t reflect.Type, argJSON string) reflect.Value {
+	arg := reflect.New(t)
+	i := arg.Interface()
+	json.Unmarshal([]byte(argJSON), i)
+	return arg.Elem()
+}
