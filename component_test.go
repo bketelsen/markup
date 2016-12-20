@@ -111,6 +111,10 @@ func TestMount(t *testing.T) {
 		t.Error("components len should be 2", l)
 	}
 
+	if l := len(nodes); l != 2 {
+		t.Error("node len should be 2", l)
+	}
+
 	if !c.mounted {
 		t.Error("c.mounted should be true:", c.mounted)
 	}
@@ -121,6 +125,10 @@ func TestMount(t *testing.T) {
 
 	if l := len(components); l != 0 {
 		t.Error("components len should be 0", l)
+	}
+
+	if l := len(nodes); l != 0 {
+		t.Error("node len should be 0", l)
 	}
 
 	if c.mounted {

@@ -73,7 +73,7 @@ func Registered(c Componer) bool {
 func Root(c Componer) *Node {
 	compo, mounted := components[c]
 	if !mounted {
-		log.Panicf("%#v is not mounted", c)
+		log.Panicf("%T is not mounted", c)
 	}
 	return compo.Root
 }
