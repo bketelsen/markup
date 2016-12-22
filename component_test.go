@@ -1,262 +1,194 @@
 package markup
 
 import (
-	"reflect"
 	"testing"
-
-	"html"
 
 	"github.com/murlokswarm/uid"
 )
 
-type Foo struct {
+type CompoMount struct {
+	mounted             bool
+	EmbedsNonRegistered bool
 }
 
-func (f *Foo) Render() string {
-	return fooXML
+func (c *CompoMount) OnMount() {
+	c.mounted = true
 }
 
-type Bar struct {
-	Value int
+func (c *CompoMount) OnDismount() {
+	c.mounted = false
 }
 
-type PropsTest struct {
-	String       string
-	Bool         bool
-	Int          int
-	Uint         uint
-	Float        float64
-	Bar          Bar
-	NotSupported *Foo
-}
-
-func (p *PropsTest) Render() string {
+func (c *CompoMount) Render() string {
 	return `
 <div>
-	<p>String: {{.String}}</p>
-	<p>Bool: {{.Bool}}</p>
-	<p>Int: {{.Int}}</p>
-	<p>Uint: {{.Uint}}</p>
-	<p>Float: {{.Float}}</p>
+    CompoMount is mounted
+    <CompoEmpty />
+
+    {{if .EmbedsNonRegistered}}
+        <CompoNotRegistered />
+    {{end}}
 </div>
-	`
+    `
 }
 
-func TestRegisterComponent(t *testing.T) {
-	RegisterComponent("Foo", func() Componer {
-		return &Foo{}
-	})
+type CompoEmpty struct{}
 
-	RegisterComponent("Foo", func() Componer {
-		return &Foo{}
-	})
+func (c *CompoEmpty) Render() string {
+	return `<p>CompoEmpty is mounted</p>`
 }
 
-func TestRegisterComponentPanic(t *testing.T) {
-	defer func() { t.Log(recover()) }()
+type CompoNotRegistered struct{}
 
-	RegisterComponent("foo", func() Componer {
-		return &Foo{}
-	})
+func (c *CompoNotRegistered) Render() string {
+	return `<p>CompoNotRegistered</p>`
+}
 
+type CompoBadRenderTemplate struct{}
+
+func (c *CompoBadRenderTemplate) Render() string {
+	return `<p>CompoBadRender {{.Foo}}</p>`
+}
+
+type CompoBadMarkup struct{}
+
+func (c *CompoBadMarkup) Render() string {
+	return `<p>CompoBadMarkup</span>`
+}
+
+type CompoBadRoot struct{}
+
+func (c *CompoBadRoot) Render() string {
+	return `<CompoEmpty />`
+}
+
+type compoNotExported struct{}
+
+func (c *compoNotExported) Render() string {
+	return `<p>CompoNotExported</p>`
+}
+
+type CompoNoPtr struct{}
+
+func (c CompoNoPtr) Render() string {
+	return `<p>CompoNoPtr</p>`
+}
+
+func init() {
+	Register(&CompoMount{})
+	Register(&CompoEmpty{})
+	Register(&CompoBadRenderTemplate{})
+	Register(&CompoBadMarkup{})
+	Register(&CompoBadRoot{})
+}
+
+func TestRegisterNotExported(t *testing.T) {
+	defer func() { recover() }()
+	Register(&compoNotExported{})
 	t.Error("should panic")
 }
 
-func TestComponentToHTML(t *testing.T) {
-	c := &Hello{}
+func TestRegisterNoPtr(t *testing.T) {
+	defer func() { recover() }()
+	Register(CompoNoPtr{})
+	t.Error("should panic")
+
+}
+
+func TestRootNotMounted(t *testing.T) {
+	defer func() { recover() }()
+	Root(&CompoEmpty{})
+	t.Error("should panic")
+}
+
+func TestMount(t *testing.T) {
 	ctx := uid.Context()
+	c := &CompoMount{}
+	root := Mount(c, ctx)
+	t.Log(root)
 
-	if _, err := ComponentToHTML(c); err == nil {
-		t.Error("should error")
+	if l := len(components); l != 2 {
+		t.Error("components len should be 2", l)
 	}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	HTML, err := ComponentToHTML(c)
-	if err != nil {
-		t.Error(err)
+	if l := len(nodes); l != 2 {
+		t.Error("node len should be 2", l)
 	}
 
-	t.Log(HTML)
+	if !c.mounted {
+		t.Error("c.mounted should be true:", c.mounted)
+	}
+
+	t.Log(Markup(c))
+
+	Dismount(c)
+
+	if l := len(components); l != 0 {
+		t.Error("components len should be 0", l)
+	}
+
+	if l := len(nodes); l != 0 {
+		t.Error("node len should be 0", l)
+	}
+
+	if c.mounted {
+		t.Error("c.mounted should be false:", c.mounted)
+	}
+
+	Dismount(c)
 }
 
-func TestIsComponentName(t *testing.T) {
-	if name := "Foo"; !IsComponentName(name) {
-		t.Errorf("%v should be a component name", name)
-	}
+func TestMountNotRegistered(t *testing.T) {
+	defer func() { recover() }()
 
-	if name := "foo"; IsComponentName(name) {
-		t.Errorf("%v should not be a component name", name)
-	}
-
-	if IsComponentName("") {
-		t.Error("empty string should not be a component name")
-	}
+	ctx := uid.Context()
+	c := &CompoNotRegistered{}
+	Mount(c, ctx)
+	t.Error("should panic")
 }
 
-func TestCreateComponent(t *testing.T) {
-	if _, err := createComponent("Foo"); err != nil {
-		t.Error(err)
-	}
+func TestMountEmbedsNotRegistered(t *testing.T) {
+	defer func() { recover() }()
+
+	ctx := uid.Context()
+	c := &CompoMount{EmbedsNonRegistered: true}
+	Mount(c, ctx)
+	t.Error("should panic")
 }
 
-func TestCreateComponentError(t *testing.T) {
-	if _, err := createComponent("HyperFoo"); err == nil {
-		t.Error("should error")
-	}
+func TestMountAlreadyMounted(t *testing.T) {
+	defer func() { recover() }()
+
+	ctx := uid.Context()
+	c := &CompoMount{}
+	Mount(c, ctx)
+	Mount(c, ctx)
+	t.Error("should panic")
 }
 
-func TestUpdateComponentFields(t *testing.T) {
-	attrs := AttrList{
-		Attr{Name: "String", Value: "Hello"},
-		Attr{Name: "Int", Value: "42"},
-		// Attr{Name: "Struct", Value: convertToJSON(Bar{Value: 21})},
-	}
+func TestMountBadRenderTemplate(t *testing.T) {
+	defer func() { recover() }()
 
-	compo := &PropsTest{}
-
-	if err := updateComponentFields(compo, attrs); err != nil {
-		t.Error(err)
-	}
-
-	if compo.String != "Hello" {
-		t.Errorf("compo.String should be \"Hello\": \"%v\"", compo.String)
-	}
-
-	if compo.Int != 42 {
-		t.Errorf("compo.String should be 42: %v", compo.Int)
-	}
-
-	// if compo.Bar.Value != 21 {
-	// 	t.Errorf("compo.Bar.Value should be 21: %v", compo.Bar.Value)
-	// }
+	ctx := uid.Context()
+	c := &CompoBadRenderTemplate{}
+	Mount(c, ctx)
+	t.Error("should panic")
 }
 
-func TestUpdateComponentFieldsError(t *testing.T) {
-	attrs := AttrList{
-		Attr{Name: "String", Value: "Hello"},
-		Attr{Name: "Int", Value: "42.42"},
-	}
+func TestMountBadMarkup(t *testing.T) {
+	defer func() { recover() }()
 
-	compo := &PropsTest{}
-
-	if err := updateComponentFields(compo, attrs); err == nil {
-		t.Error("should error")
-	}
+	ctx := uid.Context()
+	c := &CompoBadMarkup{}
+	Mount(c, ctx)
+	t.Error("should panic")
 }
 
-func TestUpdateComponentField(t *testing.T) {
-	compo := &PropsTest{}
-	compoValue := reflect.ValueOf(compo)
-	compoValue = reflect.Indirect(compoValue)
+func TestMountBadRoot(t *testing.T) {
+	defer func() { recover() }()
 
-	// String
-	if err := updateComponentField(compoValue, Attr{Name: "String", Value: "Hello, World"}); err != nil {
-		t.Error(err)
-	}
-
-	if hello := "Hello, World"; compo.String != hello {
-		t.Errorf("compo.String should be \"%v\": \"%v\"", hello, compo.String)
-	}
-
-	// Bool
-	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "true"}); err != nil {
-		t.Error(err)
-	}
-
-	if b := true; compo.Bool != b {
-		t.Errorf("compo.Bool should be \"%v\": \"%v\"", b, compo.Bool)
-	}
-
-	// Int
-	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42"}); err != nil {
-		t.Error(err)
-	}
-
-	if n := -42; compo.Int != n {
-		t.Errorf("compo.Int should be \"%v\": \"%v\"", n, compo.Int)
-	}
-
-	// Uint
-	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "42"}); err != nil {
-		t.Error(err)
-	}
-
-	if n := uint(42); compo.Uint != n {
-		t.Errorf("compo.Uint should be \"%v\": \"%v\"", n, compo.Uint)
-	}
-
-	// Float
-	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42.42"}); err != nil {
-		t.Error(err)
-	}
-
-	if n := 42.42; compo.Float != n {
-		t.Errorf("compo.Float should be \"%v\": \"%v\"", n, compo.Float)
-	}
-
-	// Struct
-	bar := Bar{
-		Value: 21,
-	}
-	j := convertToJSON(bar)
-	j = html.UnescapeString(j)
-
-	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err != nil {
-		t.Error(err)
-	}
-
-	if n := 21; compo.Bar.Value != n {
-		t.Errorf("compo.Bar.Value should be \"%v\": \"%v\"", n, compo.Bar.Value)
-	}
-
-	// NotSupported
-	if err := updateComponentField(compoValue, Attr{Name: "NotSupported", Value: "Fooooo"}); err != nil {
-		t.Error(err)
-	}
-
-}
-
-func TestUpdateComponentFieldError(t *testing.T) {
-	compo := &PropsTest{}
-	compoValue := reflect.ValueOf(compo)
-	compoValue = reflect.Indirect(compoValue)
-
-	// No field
-	if err := updateComponentField(compoValue, Attr{Name: "Foo"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Bool
-	if err := updateComponentField(compoValue, Attr{Name: "Bool", Value: "foo"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Int
-	if err := updateComponentField(compoValue, Attr{Name: "Int", Value: "-42.42"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Uint
-	if err := updateComponentField(compoValue, Attr{Name: "Uint", Value: "-42"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Float
-	if err := updateComponentField(compoValue, Attr{Name: "Float", Value: "42*$"}); err == nil {
-		t.Error("should error")
-	}
-
-	// Struct
-	bar := Bar{
-		Value: 21,
-	}
-	j := convertToJSON(bar)
-
-	if err := updateComponentField(compoValue, Attr{Name: "Bar", Value: j}); err == nil {
-		t.Error("should error")
-	}
+	ctx := uid.Context()
+	c := &CompoBadRoot{}
+	Mount(c, ctx)
+	t.Error("should panic")
 }

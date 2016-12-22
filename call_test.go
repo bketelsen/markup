@@ -1,39 +1,32 @@
 package markup
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/murlokswarm/log"
 	"github.com/murlokswarm/uid"
 )
 
-type ComponentWithFunc struct {
-	Name string
+type CompoWithFunc struct {
+	Name             string
+	calledWithNoArg  bool
+	calledWithOneArg bool
 }
 
-func (c *ComponentWithFunc) OnCallTest() {
-	log.Info("OnCallTest")
+func (c *CompoWithFunc) OnCallTest() {
+	c.calledWithNoArg = true
 }
 
-func (c *ComponentWithFunc) OnCallTestWithArg(arg string) {
-	log.Infof("OnCallTestWithArg(%v)", arg)
+func (c *CompoWithFunc) OnCallTestWithArg(arg string) {
+	c.calledWithOneArg = true
 }
 
-func (c *ComponentWithFunc) OnCallTestWithMultipleArgs(arg int, number int) {
-	log.Info("OnCallTestWithMultipleArgs")
+func (c *CompoWithFunc) OnCallTestWithMultipleArgs(arg int, number int) {
 }
 
-func (c *ComponentWithFunc) Render() string {
+func (c *CompoWithFunc) Render() string {
 	return `
 <h1>{{.Name}}</h1>
     `
-}
-
-func init() {
-	RegisterComponent("ComponentWithFunc", func() Componer {
-		return &ComponentWithFunc{}
-	})
 }
 
 type FuncArg struct {
@@ -41,106 +34,47 @@ type FuncArg struct {
 	String string
 }
 
+func init() {
+	Register(&CompoWithFunc{})
+}
+
 func TestCall(t *testing.T) {
-	c := &ComponentWithFunc{}
+	c := &CompoWithFunc{}
 	ctx := uid.Context()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	rootElem := components[c].Root
+	root := Root(c)
+	Call(root.ID, "OnCallTest", "")
+	Call(root.ID, "OnCallTestWithArg", `"42"`)
+	Call(root.ID, "Nonexistent", "")
 
-	// no arg
-	if err := Call(rootElem.ID, "OnCallTest", ""); err != nil {
-		t.Error(err)
+	if !c.calledWithNoArg {
+		t.Error("OnCallTest should have been called")
 	}
 
-	// arg
-	if err := Call(rootElem.ID, "OnCallTestWithArg", `"42"`); err != nil {
-		t.Error(err)
+	if !c.calledWithOneArg {
+		t.Error("OnCallTestWithArg should have been called")
 	}
 }
 
-func TestCallError(t *testing.T) {
-	c := &ComponentWithFunc{}
+func TestCallNotMountedNode(t *testing.T) {
+	defer func() { recover() }()
+	Call("elem--42", "", "")
+	t.Error("should panic")
+}
+
+func TestCallMethodWithMultipleArgs(t *testing.T) {
+	defer func() { recover() }()
+
+	c := &CompoWithFunc{}
 	ctx := uid.Context()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	rootElem := components[c].Root
-
-	// undefined method
-	Call(rootElem.ID, "OnCallFoo", "")
-
-	// multiple args
-	Call(rootElem.ID, "OnCallTestWithMultipleArgs", "")
-
-	// invalid json string
-	Call(rootElem.ID, "OnCallTestWithArg", "42")
-
-	// unmounted elem
-	if err := Call(uid.Elem(), "OnCallTest", ""); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestCreateCallArg(t *testing.T) {
-	var arg FuncArg
-	var number float64
-	var str string
-	var ret reflect.Value
-	var converted bool
-	var err error
-
-	// struct
-	if ret, err = createCallArg(reflect.TypeOf(arg), `{"Number": 42, "String": "Hello"}`); err != nil {
-		t.Fatal(err)
-	}
-
-	expectedArg := FuncArg{Number: 42, String: "Hello"}
-
-	if arg, converted = ret.Interface().(FuncArg); !converted {
-		t.Fatal("type conversion failed")
-	}
-
-	if arg != expectedArg {
-		t.Errorf("arg should be %v: %v", expectedArg, arg)
-	}
-
-	// number
-	if ret, err = createCallArg(reflect.TypeOf(number), "42"); err != nil {
-		t.Fatal(err)
-	}
-
-	if number, converted = ret.Interface().(float64); !converted {
-		t.Fatal("type conversion failed")
-	}
-
-	if expectedNumber := 42.0; number != expectedNumber {
-		t.Errorf("arg should be %v: %v", expectedNumber, number)
-	}
-
-	// string
-	if ret, err = createCallArg(reflect.TypeOf(str), `"Hello"`); err != nil {
-		t.Fatal(err)
-	}
-
-	if str, converted = ret.Interface().(string); !converted {
-		t.Fatal("type conversion failed")
-	}
-
-	if expectedStr := "Hello"; str != expectedStr {
-		t.Errorf("arg should be %v: %v", expectedStr, str)
-	}
-}
-
-func TestCreateCallArgError(t *testing.T) {
-	if _, err := createCallArg(reflect.TypeOf("str"), "Hello"); err == nil {
-		t.Error("should error")
-	}
+	root := Root(c)
+	Call(root.ID, "OnCallTestWithMultipleArgs", "")
+	t.Error("should panic")
 }

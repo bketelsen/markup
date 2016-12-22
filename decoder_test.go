@@ -37,12 +37,12 @@ func TestDecoderDecode(t *testing.T) {
 	r := bytes.NewBufferString(fooXML)
 	d := newDecoder(r)
 
-	e, err := d.Decode()
+	n, err := d.Decode()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Log(e.HTML())
+	t.Log(n.Markup())
 }
 
 func TestDecoderDecodeEmpty(t *testing.T) {
@@ -79,13 +79,4 @@ func TestDecoderDecodeInvalid(t *testing.T) {
 	if err == nil {
 		t.Error("should error")
 	}
-}
-
-func TestDecode(t *testing.T) {
-	e, err := Decode(fooXML)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log(e.HTML())
 }

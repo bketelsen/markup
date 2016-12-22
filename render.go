@@ -6,19 +6,15 @@ import (
 	"text/template"
 )
 
-func render(m string, data interface{}) (rendered string, err error) {
+func render(c Componer) (rendered string, err error) {
 	var b bytes.Buffer
 
 	fnmap := template.FuncMap{
 		"json": convertToJSON,
 	}
+	tmpl := template.Must(template.New("Render").Funcs(fnmap).Parse(c.Render()))
 
-	tmpl, err := template.New("").Funcs(fnmap).Parse(m)
-	if err != nil {
-		return
-	}
-
-	if err = tmpl.Execute(&b, data); err != nil {
+	if err = tmpl.Execute(&b, c); err != nil {
 		return
 	}
 

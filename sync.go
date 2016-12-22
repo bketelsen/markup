@@ -1,158 +1,159 @@
 package markup
 
-// Sync synchronizes a component.
-// It check all the elements associated with the component and performs changes if required.
-// Returns the changed elements.
-func Sync(c Componer) (changed []*Element, err error) {
-	currentElem, err := ComponentRoot(c)
+import "github.com/murlokswarm/log"
+
+const (
+	// FullSync indicates that sync should replace the full node.
+	FullSync SyncScope = iota
+
+	// AttrSync indicates that sync should replace only the attributes of the
+	// node.
+	AttrSync
+)
+
+// Sync is a struct which defines how a driver should handle a synchronisation
+// of a node on the native side.
+type Sync struct {
+	Scope      SyncScope
+	Index      int
+	Node       *Node
+	Attributes AttributeMap
+}
+
+// SyncScope defines the scope of a sync.
+type SyncScope uint8
+
+// Synchronize synchronize a whole component.
+// Compares the newer state with the live state of the component.
+func Synchronize(c Componer) (syncs []Sync) {
+	live := Root(c)
+
+	r, err := render(c)
 	if err != nil {
-		return
+		log.Panic(err)
 	}
 
-	rendered, err := render(c.Render(), c)
+	new, err := stringToNode(r)
 	if err != nil {
-		return
+		log.Panicf("%T markup returned by Render() has a %v", c, err)
 	}
 
-	newElem, err := Decode(rendered)
-	if err != nil {
-		return
+	if new.Type != HTMLNode {
+		log.Panicf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode", c)
 	}
 
-	_, changed, err = sync(currentElem, newElem)
+	syncs, _ = syncNodes(live, new)
 	return
 }
 
-func sync(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	if current.Name != new.Name || !current.Attributes.equals(new.Attributes) || len(current.Children) != len(new.Children) {
-		return syncElements(current, new)
+func syncNodes(live *Node, new *Node) (syncs []Sync, fullSyncParent bool) {
+	if live.Type != new.Type {
+		replaceNode(live, new)
+		fullSyncParent = true
+		return
 	}
 
-	currentChanged := false
-	requireChanged := false
-
-	var childChanged []*Element
-
-	for i, child := range current.Children {
-		if requireChanged, childChanged, err = sync(child, new.Children[i]); err != nil {
+	if live.Type == TextNode {
+		if live.Text == new.Text {
 			return
 		}
 
-		if currentChanged {
+		live.Text = new.Text
+		fullSyncParent = true
+		return
+	}
+
+	if live.Tag != new.Tag && live.Type == ComponentNode {
+		replaceNode(live, new)
+		fullSyncParent = true
+		return
+	}
+
+	if live.Tag != new.Tag || len(live.Children) != len(new.Children) {
+		mergeHTMLNodes(live, new)
+		s := Sync{
+			Scope: FullSync,
+			Node:  live,
+		}
+		syncs = []Sync{s}
+		return
+	}
+
+	attrsDiff := live.Attributes.diff(new.Attributes)
+
+	if len(attrsDiff) != 0 && live.Type == ComponentNode {
+		live.Attributes = new.Attributes
+		decodeAttributeMap(new.Attributes, live.Component)
+		syncs = Synchronize(live.Component)
+		return
+	}
+
+	fullSync := false
+
+	for i := 0; i < len(live.Children); i++ {
+		csyncs, fsp := syncNodes(live.Children[i], new.Children[i])
+		if !fullSync && fsp {
+			fullSync = true
+		}
+
+		if fullSync {
 			continue
 		}
 
-		currentChanged = requireChanged
-		changed = append(changed, childChanged...)
+		syncs = append(syncs, csyncs...)
 	}
 
-	if currentChanged {
-		changed = []*Element{current}
-	}
-	return
-}
-
-func syncElements(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	switch {
-	case current.Type == HTML && new.Type != HTML:
-		return syncHTMLWithComponentOrText(current, new)
-
-	case current.Type == Component && new.Type == Component:
-		return syncComponentWithComponent(current, new)
-
-	case current.Type == Component && new.Type != Component:
-		return syncComponentWithTextOrHTML(current, new)
-
-	case current.Type == Text && new.Type == Text:
-		return syncTextWithText(current, new)
-
-	case current.Type == Text && new.Type != Text:
-		return syncTextWithHTMLOrComponent(current, new)
-
-	default:
-		return syncHTMLWithHTML(current, new)
-	}
-}
-
-func syncHTMLWithHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	for _, c := range current.Children {
-		dismount(c)
-	}
-
-	for _, c := range new.Children {
-		c.Parent = current
-
-		if err = mount(c, current.Component, current.ContextID); err != nil {
-			return
+	if fullSync {
+		s := Sync{
+			Scope: FullSync,
+			Node:  live,
 		}
-	}
-
-	current.Name = new.Name
-	current.Attributes = new.Attributes
-	current.Children = new.Children
-
-	changed = []*Element{current}
-	return
-}
-
-func syncHTMLWithComponentOrText(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	dismount(current)
-
-	current.Name = new.Name
-	current.Attributes = new.Attributes
-	current.Type = new.Type
-	current.Children = nil
-
-	parentChanged = true
-	err = mount(current, current.Component, current.ContextID)
-	return
-}
-
-func syncComponentWithComponent(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	current.Attributes = new.Attributes
-
-	if current.Name == new.Name {
-		if err = updateComponentFields(current.Component, new.Attributes); err != nil {
-			return
-		}
-
-		changed, err = Sync(current.Component)
+		syncs = []Sync{s}
 		return
 	}
 
-	dismount(current)
-	current.Name = new.Name
-
-	parentChanged = true
-	err = mountComponent(current, current.ContextID)
+	if len(attrsDiff) != 0 {
+		live.Attributes = new.Attributes
+		s := Sync{
+			Scope:      AttrSync,
+			Node:       live,
+			Attributes: attrsDiff,
+		}
+		syncs = append([]Sync{s}, syncs...)
+	}
 	return
 }
 
-func syncComponentWithTextOrHTML(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	dismount(current)
+func replaceNode(live *Node, new *Node) {
+	if live.Type == ComponentNode {
+		Dismount(live.Component)
+	}
 
-	current.Name = new.Name
-	current.Attributes = new.Attributes
-	current.Type = new.Type
+	live.Tag = new.Tag
+	live.Type = new.Type
+	live.Text = new.Text
+	live.Attributes = new.Attributes
+	live.Children = new.Children
 
-	parentChanged = true
-	err = mount(current, current.Parent.Component, current.Parent.ContextID)
-	return
+	for _, c := range live.Children {
+		c.Parent = live
+	}
+
+	mountNode(live, live.Mount, live.ContextID)
 }
 
-func syncTextWithText(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	current.Attributes = new.Attributes
-	parentChanged = true
-	return
-}
+func mergeHTMLNodes(live *Node, new *Node) {
+	live.Tag = new.Tag
+	live.Attributes = new.Attributes
 
-func syncTextWithHTMLOrComponent(current *Element, new *Element) (parentChanged bool, changed []*Element, err error) {
-	current.Name = new.Name
-	current.Attributes = new.Attributes
-	current.Type = new.Type
-	current.Children = new.Children
+	for _, c := range live.Children {
+		dismountNode(c)
+	}
 
-	parentChanged = true
-	err = mount(current, current.Parent.Component, current.Parent.ContextID)
-	return
+	live.Children = new.Children
+
+	for _, c := range live.Children {
+		c.Parent = live
+		mountNode(c, live.Mount, live.ContextID)
+	}
 }

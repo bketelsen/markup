@@ -1,17 +1,16 @@
 package markup
 
 import (
-	"encoding/json"
-	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/murlokswarm/log"
+	"github.com/murlokswarm/uid"
 )
 
 var (
 	compoBuilders = map[string]func() Componer{}
 	components    = map[Componer]*component{}
+	nodes         = map[uid.ID]*Node{}
 )
 
 // Componer is the interface that describes a component.
@@ -22,132 +21,180 @@ type Componer interface {
 	Render() string
 }
 
+// Mounter is the interface that wraps OnMount method.
+// OnMount si called when a component is mounted.
+type Mounter interface {
+	OnMount()
+}
+
+// Dismounter is the interface that wraps OnDismount method.
+// OnDismount si called when a component is dismounted.
+type Dismounter interface {
+	OnDismount()
+}
+
 type component struct {
 	Count int
-	Root  *Element
+	Root  *Node
 }
 
-// RegisterComponent registers a component builder. It allow to know which
-// component should be built when name is found into a markup.
-// Should be called in a init() function, one time per component.
-func RegisterComponent(name string, b func() Componer) {
-	if !IsComponentName(name) {
-		log.Panicf("\"%v\" is an invalid component name. must not be empty and should have its first letter capitalized", name)
+// Register registers a component. Allows the component to be dynamically
+// created when a tag with its struct name is found into a markup.
+func Register(c Componer) {
+	v := reflect.ValueOf(c)
+
+	if k := v.Kind(); k != reflect.Ptr {
+		log.Panicf("register accepts only components of kind %v: %v", reflect.Ptr, k)
 	}
 
-	if _, ok := compoBuilders[name]; ok {
-		log.Infof("component builder for \033[35m%v\033[00m is overloaded with %T", name, b)
+	t := v.Type().Elem()
+	tag := t.Name()
+
+	if !isComponentTag(tag) {
+		log.Panicf("non exported components cannot be registered: %v", t)
 	}
 
-	compoBuilders[name] = b
+	compoBuilders[tag] = func() Componer {
+		v := reflect.New(t)
+		return v.Interface().(Componer)
+	}
+	log.Infof("%v has been registered under the tag %v", t, tag)
 }
 
-// ComponentToHTML returns the HTML representation of c.
-// returns an error if c is not mounted.
-func ComponentToHTML(c Componer) (HTML string, err error) {
-	var rootElem *Element
+// Registered returns true if c is registered, otherwise false.
+func Registered(c Componer) bool {
+	v := reflect.Indirect(reflect.ValueOf(c))
+	t := v.Type()
+	_, registered := compoBuilders[t.Name()]
+	return registered
+}
 
-	if rootElem, err = ComponentRoot(c); err != nil {
-		return
+// Root returns the root node of c.
+func Root(c Componer) *Node {
+	compo, mounted := components[c]
+	if !mounted {
+		log.Panicf("%T is not mounted", c)
+	}
+	return compo.Root
+}
+
+// Markup returns the markup of c.
+func Markup(c Componer) string {
+	return Root(c).Markup()
+}
+
+// Mount retains a component and its underlying nodes.
+func Mount(c Componer, ctx uid.ID) (root *Node) {
+	if !Registered(c) {
+		log.Panicf("%T is not registered", c)
 	}
 
-	HTML = rootElem.HTML()
+	if compo, mounted := components[c]; mounted {
+		// Go uses the same reference for different instances of a same empty struct.
+		// This prevents from mounting a same empty struct.
+		if t := reflect.TypeOf(c).Elem(); t.NumField() == 0 {
+			compo.Count++
+			return compo.Root
+		}
+
+		log.Panicf("%T is already mounted", c)
+	}
+
+	r, err := render(c)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	if root, err = stringToNode(r); err != nil {
+		log.Panicf("%T markup returned by Render() has a %v", c, err)
+	}
+
+	if root.Type != HTMLNode {
+		log.Panicf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode", c)
+	}
+
+	mountNode(root, c, ctx)
+	components[c] = &component{
+		Count: 1,
+		Root:  root,
+	}
+
+	if mounter, isMounter := c.(Mounter); isMounter {
+		mounter.OnMount()
+	}
 	return
 }
 
-// ComponentRoot returns the root element of c.
-// returns an error if c is not mounted.
-func ComponentRoot(c Componer) (root *Element, err error) {
-	if compo, mounted := components[c]; mounted {
-		return compo.Root, nil
-	}
+func mountNode(n *Node, mount Componer, ctx uid.ID) {
+	switch n.Type {
+	case HTMLNode:
+		mountHTMLNode(n, mount, ctx)
 
-	return nil, fmt.Errorf("%#v is not mounted", c)
+	case ComponentNode:
+		mountComponentNode(n, mount, ctx)
+	}
 }
 
-// IsComponentName return true if v is a component name, otherwise false.
-func IsComponentName(v string) bool {
-	if len(v) == 0 {
-		return false
+func mountHTMLNode(n *Node, mount Componer, ctx uid.ID) {
+	n.ID = uid.Elem()
+	n.ContextID = ctx
+	n.Mount = mount
+	nodes[n.ID] = n
+
+	for _, c := range n.Children {
+		mountNode(c, mount, ctx)
 	}
-	return v[0] >= 'A' && v[0] <= 'Z'
 }
 
-func createComponent(name string) (c Componer, err error) {
-	builder, registered := compoBuilders[name]
-	if !registered {
-		return nil, fmt.Errorf("component %v is not registered", name)
+func mountComponentNode(n *Node, mount Componer, ctx uid.ID) {
+	n.ContextID = ctx
+	n.Mount = mount
+
+	b, registed := compoBuilders[n.Tag]
+	if !registed {
+		log.Panicf("%v is not registered", n.Tag)
 	}
-	return builder(), nil
+
+	c := b()
+	decodeAttributeMap(n.Attributes, c)
+	Mount(c, ctx)
+	n.Component = c
 }
 
-func updateComponentFields(c Componer, attrs AttrList) error {
-	compo := reflect.Indirect(reflect.ValueOf(c))
+// Dismount dismounts a component.
+func Dismount(c Componer) {
+	compo, mounted := components[c]
+	if !mounted {
+		return
+	}
 
-	for _, attr := range attrs {
-		if err := updateComponentField(compo, attr); err != nil {
-			return err
+	// Go uses the same reference for different instances of a same empty struct.
+	// This prevents from dismounting an empty struct that still remains in another context.
+	if compo.Count--; compo.Count == 0 {
+		dismountNode(compo.Root)
+		delete(components, c)
+
+		if dismounter, isDismounter := c.(Dismounter); isDismounter {
+			dismounter.OnDismount()
 		}
 	}
-	return nil
+	return
 }
 
-func updateComponentField(compo reflect.Value, attr Attr) error {
-	field := compo.FieldByName(attr.Name)
-	if !field.IsValid() {
-		return fmt.Errorf("no field %v in %T", attr.Name, compo.Interface())
+func dismountNode(n *Node) {
+	switch n.Type {
+	case HTMLNode:
+		dismountHTMLNode(n)
+
+	case ComponentNode:
+		Dismount(n.Component)
+	}
+}
+
+func dismountHTMLNode(n *Node) {
+	for _, c := range n.Children {
+		dismountNode(c)
 	}
 
-	switch field.Kind() {
-	case reflect.String:
-		field.SetString(attr.Value)
-
-	case reflect.Bool:
-		if attr.Value != "true" && attr.Value != "false" {
-			return fmt.Errorf("boolean attributes in a component must be set to true or false: %v", attr.Value)
-		}
-
-		b, _ := strconv.ParseBool(attr.Value)
-		field.SetBool(b)
-
-	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
-		n, err := strconv.ParseInt(attr.Value, 0, 64)
-		if err != nil {
-			return err
-		}
-
-		field.SetInt(n)
-
-	case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uintptr:
-		n, err := strconv.ParseUint(attr.Value, 0, 64)
-		if err != nil {
-			return err
-		}
-
-		field.SetUint(n)
-
-	case reflect.Float64, reflect.Float32:
-		n, err := strconv.ParseFloat(attr.Value, 64)
-		if err != nil {
-			return err
-		}
-
-		field.SetFloat(n)
-
-	case reflect.Struct:
-		s := reflect.New(field.Type())
-
-		if err := json.Unmarshal([]byte(attr.Value), s.Interface()); err != nil {
-			return err
-		}
-
-		field.Set(s.Elem())
-
-	default:
-		log.Warnf("in \033[35m%T\033[00m: field \033[36m%v\033[00m of type \033[34m%T\033[00m can't be mapped",
-			compo.Interface(),
-			attr.Name,
-			field.Interface())
-	}
-	return nil
+	delete(nodes, n.ID)
 }

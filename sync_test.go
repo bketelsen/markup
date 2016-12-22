@@ -6,455 +6,324 @@ import (
 	"github.com/murlokswarm/uid"
 )
 
-const (
-	testHTML            TestType = 0
-	testHTMLAlt                  = 1
-	testComponent                = 2
-	testComponentAlt             = 3
-	testText                     = 4
-	testChildMountError          = 5
-	testBadMarkup                = 6
-	testBadTemplate              = 7
-)
-
-type TestType uint8
-
-type SyncComponent struct {
-	Input                             string
-	Text                              string
-	Number                            int
-	TestType                          TestType
-	TestHTMLToText                    bool
-	TestComponentToDifferentComponent bool
-	TestComponentToText               bool
+type CompoSync struct {
+	TextChange      bool
+	HTMLAttrChange  bool
+	HTMLTagChange   bool
+	CompoAttrChange bool
+	CompoChange     bool
+	TypeChange      bool
+	AddRemove       bool
 }
 
-func (c *SyncComponent) Render() string {
+func (c *CompoSync) Render() string {
 	return `
 <div>
-	<h1>SyncComponent</h1>
-	<div>
-		==========  TEST BEGIN ==========
-		<!-- Test begin -->
-		{{if eq .TestType 0}}
-			<input value="{{.Input}}" />
-		{{end}}
+    <!-- TextChange -->
+    <p>{{if .TextChange}}Maxoo{{else}}Jonhy{{end}}</p>
 
-		{{if eq .TestType 1}}
-			<div>
-				<p>Booboo</p>
-			</div>
-		{{end}}
+    <!-- HTMLAttrChange -->
+    <p class="{{if .HTMLAttrChange}}boo{{end}}">Say something</p>
 
-		{{if eq .TestType 2}}
-			<SubSyncComponent Number="{{.Number}}" />
-		{{end}}
+    <!-- HTMLTagChange -->
+    {{if .HTMLTagChange}}
+        <h1>Hello</h1>
+    {{else}}
+        <h2>Hello</h2>
+    {{end}}
 
-		{{if eq .TestType 3}}
-			<Hello />
-		{{end}}
+    <!-- CompoAttrChange -->
+    <SubCompoSync Name="{{if .CompoAttrChange}}Max{{else}}Maxence{{end}}" />
 
-		{{if eq .TestType 4}}
-			{{.Text}}
-		{{end}}
+    <!-- CompoChange -->
+    <div>
+        {{if .CompoChange}}
+            <SubCompoSyncBis />          
+        {{else}}
+            <SubCompoSync Name="Jonhzy" />
+        {{end}}
+    </div>
 
-		{{if eq .TestType 5}}
-			<div>
-				<Hello MountError="true" />
-			</div>
-		{{end}}
+     <!-- TypeChange -->
+    <div>
+        {{if .TypeChange}}
+            <div>
+                <h1>I'm changed</h1>
+                <SubCompoSyncBis /> 
+            </div>           
+        {{else}}
+            <SubCompoSync Name="Bravo" />
+        {{end}}
+    </div>
 
-		{{if eq .TestType 6}}
-			<div></p>
-		{{end}}
 
-		{{if eq .TestType 7}}
-			<div>{{.Boo}}</div>
-		{{end}}
-		<!-- Test end -->
-		===========  TEST END ===========
-	</div>
+    <!-- AddRemove -->
+    <div>
+        {{if .AddRemove}}<h1>Plop!</h1>{{end}}
+    </div>
 </div>
-	`
+    `
 }
 
-type SubSyncComponent struct {
-	Number uint
+type SubCompoSync struct {
+	Name string
 }
 
-func (c *SubSyncComponent) Render() string {
+func (c *SubCompoSync) Render() string {
 	return `
 <div>
-	<h1>SubSyncComponent</h1>
-	<p>{{.Number}}</p>
+    <h1>{{html .Name}}</h1>
+    <p>Whoa</p>
 </div>
-	`
+    `
+}
+
+type SubCompoSyncBis struct {
+}
+
+func (c *SubCompoSyncBis) Render() string {
+	return `<p>I'm sexy</p>`
+}
+
+type CompoSyncError struct {
+	BadTemplate bool
+	BadRoot     bool
+	BadMarkup   bool
+}
+
+func (c *CompoSyncError) Render() string {
+	return `
+{{if .BadTemplate}}
+    {{.Unknown}}
+{{else if .BadRoot}}
+    <CompoBadRoot />
+{{else if .BadMarkup}}
+    <div></p>
+{{else}}
+    <div>Murloks!!!</div>
+{{end}}
+    `
 }
 
 func init() {
-	RegisterComponent("SyncComponent", func() Componer {
-		return &SyncComponent{}
-	})
-
-	RegisterComponent("SubSyncComponent", func() Componer {
-		return &SubSyncComponent{}
-	})
+	Register(&CompoSync{})
+	Register(&SubCompoSync{})
+	Register(&SubCompoSyncBis{})
+	Register(&CompoSyncError{})
 }
 
-func TestSyncNoChange(t *testing.T) {
+func TestSynchronizeTextChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testHTML}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
+	c.TextChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	if len(changed) != 0 {
-		t.Error("should not have changed elements")
-	}
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncHTMLToHTML(t *testing.T) {
+func TestSynchronizeHTMLAttrChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testHTMLAlt}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	c.HTMLAttrChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.TestType = testHTML
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
+	if s.Scope != AttrSync {
+		t.Error("s.Scope should be AttrSync")
 	}
 
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Attributes["class"] != "boo" {
+		t.Error(`s.Attributes["class"] should be boo:`, s.Attributes["class"])
 	}
 }
 
-func TestSyncHTMLToComponent(t *testing.T) {
+func TestSynchronizeHTMLTagChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testHTML}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	c.HTMLTagChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.TestType = testComponent
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncHTMLToText(t *testing.T) {
+func TestSynchronizeCompoAttrChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testHTML}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	c.CompoAttrChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.TestType = testText
-	c.Text = "La vie en rose"
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncComponentToComponent(t *testing.T) {
+func TestSynchronizeCompoChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testComponent}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	c.CompoChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.Number = 42
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncComponentToDifferentComponent(t *testing.T) {
+func TestSynchronizeTypeChange(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testComponent}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	c.TypeChange = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.TestType = testComponentAlt
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncComponentToHTML(t *testing.T) {
+func TestAddRemove(t *testing.T) {
+	c := &CompoSync{}
 	ctx := uid.Context()
-	c := &SyncComponent{TestType: testComponent}
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	// Add.
+	c.AddRemove = true
+	syncs := Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	c.TestType = testHTML
+	s := syncs[0]
+	t.Log(s.Node.Markup())
 
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
+	// Remove.
+	c.AddRemove = false
+	syncs = Synchronize(c)
+
+	if l := len(syncs); l != 1 {
+		t.Error("l should be 1:", l)
 	}
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
+	s = syncs[0]
+	t.Log(s.Node.Markup())
+
+	if s.Scope != FullSync {
+		t.Error("s.Scope should be FullSync")
 	}
 }
 
-func TestSyncComponentToText(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testComponent}
+func TestSynchronizeBadTemplate(t *testing.T) {
+	defer func() { recover() }()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	c := &CompoSyncError{}
+	ctx := uid.Context()
+
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
-
-	c.TestType = testText
-	c.Text = "Boo"
-
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
+	c.BadTemplate = true
+	Synchronize(c)
+	t.Error("should panic")
 }
 
-func TestSyncTextToText(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testText, Text: "Hello"}
+func TestSynchronizeBadRoot(t *testing.T) {
+	defer func() { recover() }()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	c := &CompoSyncError{}
+	ctx := uid.Context()
+
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
-
-	c.Text = "World"
-
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
+	c.BadRoot = true
+	Synchronize(c)
+	t.Error("should panic")
 }
 
-func TestSyncTextToHTML(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testText, Text: "Hello"}
+func TestSynchronizeBadMarkup(t *testing.T) {
+	defer func() { recover() }()
 
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
+	c := &CompoSyncError{}
+	ctx := uid.Context()
+
+	Mount(c, ctx)
 	defer Dismount(c)
 
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
-
-	c.TestType = testHTML
-
-	changed, err := Sync(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(changed) != 1 {
-		t.Error("changed should be equal to 1")
-	}
-
-	if HTML, err := ComponentToHTML(c); err == nil {
-		t.Log(HTML)
-	}
-}
-
-func TestSyncChildMountError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{Input: "Hello"}
-
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testChildMountError
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncAttrErrorError(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{TestType: testComponent}
-
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.Number = -42
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncNotMounted(t *testing.T) {
-	c := &SyncComponent{TestType: testComponent}
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncBadMarkup(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{}
-
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testBadMarkup
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
-}
-
-func TestSyncBadTemplate(t *testing.T) {
-	ctx := uid.Context()
-	c := &SyncComponent{}
-
-	if _, err := Mount(c, ctx); err != nil {
-		t.Fatal(err)
-	}
-	defer Dismount(c)
-
-	c.TestType = testBadTemplate
-
-	if _, err := Sync(c); err == nil {
-		t.Error("should error")
-	}
+	c.BadMarkup = true
+	Synchronize(c)
+	t.Error("should panic")
 }
