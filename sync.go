@@ -46,29 +46,56 @@ func Synchronize(c Componer) (syncs []Sync) {
 	return
 }
 
-func syncNodes(live *Node, new *Node) (syncs []Sync, fullSyncParent bool) {
+func syncNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
 	if live.Type != new.Type {
 		replaceNode(live, new)
-		fullSyncParent = true
+		parentShouldFullSync = true
 		return
 	}
 
-	if live.Type == TextNode {
-		if live.Text == new.Text {
-			return
-		}
+	switch live.Type {
+	case TextNode:
+		parentShouldFullSync = syncTextNodes(live, new)
 
-		live.Text = new.Text
-		fullSyncParent = true
+	case ComponentNode:
+		syncs, parentShouldFullSync = syncComponentNodes(live, new)
+
+	case HTMLNode:
+		syncs, parentShouldFullSync = syncHTMLNodes(live, new)
+	}
+	return
+}
+
+func syncTextNodes(live *Node, new *Node) (changed bool) {
+	if live.Text == new.Text {
 		return
 	}
 
-	if live.Tag != new.Tag && live.Type == ComponentNode {
+	live.Text = new.Text
+	changed = true
+	return
+}
+
+func syncComponentNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
+	if live.Tag != new.Tag {
 		replaceNode(live, new)
-		fullSyncParent = true
+		parentShouldFullSync = true
 		return
 	}
 
+	attrDiff := live.Attributes.diff(new.Attributes)
+
+	if len(attrDiff) == 0 {
+		return
+	}
+
+	live.Attributes = new.Attributes
+	decodeAttributeMap(new.Attributes, live.Component)
+	syncs = Synchronize(live.Component)
+	return
+}
+
+func syncHTMLNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
 	if live.Tag != new.Tag || len(live.Children) != len(new.Children) {
 		mergeHTMLNodes(live, new)
 		s := Sync{
@@ -79,31 +106,22 @@ func syncNodes(live *Node, new *Node) (syncs []Sync, fullSyncParent bool) {
 		return
 	}
 
-	attrsDiff := live.Attributes.diff(new.Attributes)
-
-	if len(attrsDiff) != 0 && live.Type == ComponentNode {
-		live.Attributes = new.Attributes
-		decodeAttributeMap(new.Attributes, live.Component)
-		syncs = Synchronize(live.Component)
-		return
-	}
-
-	fullSync := false
+	shouldFullSync := false
 
 	for i := 0; i < len(live.Children); i++ {
-		csyncs, fsp := syncNodes(live.Children[i], new.Children[i])
-		if !fullSync && fsp {
-			fullSync = true
+		childSyncs, requireFullSync := syncNodes(live.Children[i], new.Children[i])
+		if requireFullSync && !shouldFullSync {
+			shouldFullSync = true
 		}
 
-		if fullSync {
+		if shouldFullSync {
 			continue
 		}
 
-		syncs = append(syncs, csyncs...)
+		syncs = append(syncs, childSyncs...)
 	}
 
-	if fullSync {
+	if shouldFullSync {
 		s := Sync{
 			Scope: FullSync,
 			Node:  live,
@@ -112,12 +130,12 @@ func syncNodes(live *Node, new *Node) (syncs []Sync, fullSyncParent bool) {
 		return
 	}
 
-	if len(attrsDiff) != 0 {
+	if attrDiff := live.Attributes.diff(new.Attributes); len(attrDiff) != 0 {
 		live.Attributes = new.Attributes
 		s := Sync{
 			Scope:      AttrSync,
 			Node:       live,
-			Attributes: attrsDiff,
+			Attributes: attrDiff,
 		}
 		syncs = append([]Sync{s}, syncs...)
 	}
