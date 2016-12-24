@@ -167,28 +167,19 @@ func TestMountAlreadyMounted(t *testing.T) {
 }
 
 func TestMountBadRenderTemplate(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoBadRenderTemplate{}
 	Mount(c, ctx)
-	t.Error("should panic")
 }
 
 func TestMountBadMarkup(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoBadMarkup{}
 	Mount(c, ctx)
-	t.Error("should panic")
 }
 
 func TestMountBadRoot(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoBadRoot{}
 	Mount(c, ctx)
-	t.Error("should panic")
 }

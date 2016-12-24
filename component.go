@@ -102,15 +102,18 @@ func Mount(c Componer, ctx uid.ID) (root *Node) {
 
 	r, err := render(c)
 	if err != nil {
-		log.Panic(err)
+		log.Errorf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		return
 	}
 
 	if root, err = stringToNode(r); err != nil {
-		log.Panicf("%T markup returned by Render() has a %v", c, err)
+		log.Errorf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		return
 	}
 
 	if root.Type != HTMLNode {
-		log.Panicf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode", c)
+		log.Errorf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		return
 	}
 
 	mountNode(root, c, ctx)

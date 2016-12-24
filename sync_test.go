@@ -287,8 +287,6 @@ func TestAddRemove(t *testing.T) {
 }
 
 func TestSynchronizeBadTemplate(t *testing.T) {
-	defer func() { recover() }()
-
 	c := &CompoSyncError{}
 	ctx := uid.Context()
 
@@ -297,12 +295,9 @@ func TestSynchronizeBadTemplate(t *testing.T) {
 
 	c.BadTemplate = true
 	Synchronize(c)
-	t.Error("should panic")
 }
 
 func TestSynchronizeBadRoot(t *testing.T) {
-	defer func() { recover() }()
-
 	c := &CompoSyncError{}
 	ctx := uid.Context()
 
@@ -311,12 +306,9 @@ func TestSynchronizeBadRoot(t *testing.T) {
 
 	c.BadRoot = true
 	Synchronize(c)
-	t.Error("should panic")
 }
 
 func TestSynchronizeBadMarkup(t *testing.T) {
-	defer func() { recover() }()
-
 	c := &CompoSyncError{}
 	ctx := uid.Context()
 
@@ -325,5 +317,4 @@ func TestSynchronizeBadMarkup(t *testing.T) {
 
 	c.BadMarkup = true
 	Synchronize(c)
-	t.Error("should panic")
 }
