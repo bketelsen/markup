@@ -3,6 +3,7 @@ package markup
 import (
 	"reflect"
 
+	"github.com/murlokswarm/errors"
 	"github.com/murlokswarm/log"
 	"github.com/murlokswarm/uid"
 )
@@ -44,14 +45,14 @@ func Register(c Componer) {
 	v := reflect.ValueOf(c)
 
 	if k := v.Kind(); k != reflect.Ptr {
-		log.Panicf("register accepts only components of kind %v: %v", reflect.Ptr, k)
+		log.Error(errors.Newf("register accepts only components of kind %v: %v", reflect.Ptr, k))
 	}
 
 	t := v.Type().Elem()
 	tag := t.Name()
 
 	if !isComponentTag(tag) {
-		log.Panicf("non exported components cannot be registered: %v", t)
+		log.Panic(errors.Newf("non exported components cannot be registered: %v", t))
 	}
 
 	compoBuilders[tag] = func() Componer {
@@ -73,7 +74,7 @@ func Registered(c Componer) bool {
 func Root(c Componer) *Node {
 	compo, mounted := components[c]
 	if !mounted {
-		log.Panicf("%T is not mounted", c)
+		log.Panic(errors.Newf("%T is not mounted", c))
 	}
 	return compo.Root
 }
@@ -86,7 +87,7 @@ func Markup(c Componer) string {
 // Mount retains a component and its underlying nodes.
 func Mount(c Componer, ctx uid.ID) (root *Node) {
 	if !Registered(c) {
-		log.Panicf("%T is not registered", c)
+		log.Panic(errors.Newf("%T is not registered", c))
 	}
 
 	if compo, mounted := components[c]; mounted {
@@ -97,22 +98,25 @@ func Mount(c Componer, ctx uid.ID) (root *Node) {
 			return compo.Root
 		}
 
-		log.Panicf("%T is already mounted", c)
+		log.Panic(errors.Newf("%T is already mounted", c))
 	}
 
 	r, err := render(c)
 	if err != nil {
-		log.Errorf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		err = errors.Newf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		log.Error(err)
 		return
 	}
 
 	if root, err = stringToNode(r); err != nil {
-		log.Errorf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		err = errors.Newf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		log.Error(err)
 		return
 	}
 
 	if root.Type != HTMLNode {
-		log.Errorf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		log.Error(err)
 		return
 	}
 
@@ -155,7 +159,7 @@ func mountComponentNode(n *Node, mount Componer, ctx uid.ID) {
 
 	b, registed := compoBuilders[n.Tag]
 	if !registed {
-		log.Panicf("%v is not registered", n.Tag)
+		log.Panic(errors.Newf("%v is not registered", n.Tag))
 	}
 
 	c := b()

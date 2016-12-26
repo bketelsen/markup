@@ -1,6 +1,9 @@
 package markup
 
-import "github.com/murlokswarm/log"
+import (
+	"github.com/murlokswarm/errors"
+	"github.com/murlokswarm/log"
+)
 
 const (
 	// FullSync indicates that sync should replace the full node.
@@ -30,18 +33,21 @@ func Synchronize(c Componer) (syncs []Sync) {
 
 	r, err := render(c)
 	if err != nil {
-		log.Errorf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		err = errors.Newf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		log.Error(err)
 		return
 	}
 
 	new, err := stringToNode(r)
 	if err != nil {
-		log.Errorf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		err = errors.Newf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		log.Error(err)
 		return
 	}
 
 	if new.Type != HTMLNode {
-		log.Errorf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		log.Error(err)
 		return
 	}
 

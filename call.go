@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/murlokswarm/errors"
 	"github.com/murlokswarm/log"
 	"github.com/murlokswarm/uid"
 )
 
 // Call invokes the method named by methodName from the component which own
 // the node associated to nodeID.
-// Panic if the node is nonexistent.
 func Call(nodeID uid.ID, methodName string, argJSON string) {
 	n, mounted := nodes[nodeID]
 	if !mounted {
-		log.Panicf("node with ID = %v does not belong to a mounted component.", nodeID)
+		log.Error(errors.Newf("node with ID = %v does not belong to a mounted component.", nodeID))
+		return
 	}
 
 	c := n.Mount
@@ -40,7 +41,7 @@ func Call(nodeID uid.ID, methodName string, argJSON string) {
 		return
 
 	default:
-		log.Panicf("%T %v should have 1 parameter max: %v", c, methodName, mt)
+		log.Error(errors.Newf("%T %v should have 1 parameter max: %v", c, methodName, mt))
 		return
 	}
 }

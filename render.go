@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"text/template"
+	"time"
 )
 
 func render(c Componer) (rendered string, err error) {
@@ -11,6 +12,7 @@ func render(c Componer) (rendered string, err error) {
 
 	fnmap := template.FuncMap{
 		"json": convertToJSON,
+		"time": formatTime,
 	}
 	tmpl := template.Must(template.New("Render").Funcs(fnmap).Parse(c.Render()))
 
@@ -22,8 +24,11 @@ func render(c Componer) (rendered string, err error) {
 	return
 }
 
-func convertToJSON(v interface{}) (out string) {
+func convertToJSON(v interface{}) string {
 	b, _ := json.Marshal(v)
-	out = template.HTMLEscapeString(string(b))
-	return
+	return template.HTMLEscapeString(string(b))
+}
+
+func formatTime(t time.Time, layout string) string {
+	return t.Format(layout)
 }

@@ -60,14 +60,10 @@ func TestCall(t *testing.T) {
 }
 
 func TestCallNotMountedNode(t *testing.T) {
-	defer func() { recover() }()
 	Call("elem--42", "", "")
-	t.Error("should panic")
 }
 
 func TestCallMethodWithMultipleArgs(t *testing.T) {
-	defer func() { recover() }()
-
 	c := &CompoWithFunc{}
 	ctx := uid.Context()
 
@@ -76,5 +72,4 @@ func TestCallMethodWithMultipleArgs(t *testing.T) {
 
 	root := Root(c)
 	Call(root.ID, "OnCallTestWithMultipleArgs", "")
-	t.Error("should panic")
 }
