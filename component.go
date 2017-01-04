@@ -164,8 +164,8 @@ func mountComponentNode(n *Node, mount Componer, ctx uid.ID) error {
 	n.ContextID = ctx
 	n.Mount = mount
 
-	b, registed := compoBuilders[n.Tag]
-	if !registed {
+	b, registered := compoBuilders[n.Tag]
+	if !registered {
 		return errors.Newf("%v is not registered", n.Tag)
 	}
 
