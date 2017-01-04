@@ -9,6 +9,7 @@ import (
 type CompoMount struct {
 	mounted             bool
 	EmbedsNonRegistered bool
+	EmbedsBadMarkup     bool
 }
 
 func (c *CompoMount) OnMount() {
@@ -27,6 +28,10 @@ func (c *CompoMount) Render() string {
 
     {{if .EmbedsNonRegistered}}
         <CompoNotRegistered />
+    {{end}}
+
+	{{if .EmbedsBadMarkup}}
+        <CompoBadMarkup />
     {{end}}
 </div>
     `
@@ -104,7 +109,12 @@ func TestRootNotMounted(t *testing.T) {
 func TestMount(t *testing.T) {
 	ctx := uid.Context()
 	c := &CompoMount{}
-	root := Mount(c, ctx)
+
+	root, err := Mount(c, ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Log(root)
 
 	if l := len(components); l != 2 {
@@ -139,31 +149,43 @@ func TestMount(t *testing.T) {
 }
 
 func TestMountNotRegistered(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoNotRegistered{}
-	Mount(c, ctx)
-	t.Error("should panic")
+
+	if _, err := Mount(c, ctx); err == nil {
+		t.Error("err should not be nil")
+	}
 }
 
 func TestMountEmbedsNotRegistered(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoMount{EmbedsNonRegistered: true}
-	Mount(c, ctx)
-	t.Error("should panic")
+
+	if _, err := Mount(c, ctx); err == nil {
+		t.Error("err should not be nil")
+	}
+}
+
+func TestMountEmbedsBadMarkup(t *testing.T) {
+	ctx := uid.Context()
+	c := &CompoMount{EmbedsBadMarkup: true}
+
+	if _, err := Mount(c, ctx); err == nil {
+		t.Error("err should not be nil")
+	}
 }
 
 func TestMountAlreadyMounted(t *testing.T) {
-	defer func() { recover() }()
-
 	ctx := uid.Context()
 	c := &CompoMount{}
-	Mount(c, ctx)
-	Mount(c, ctx)
-	t.Error("should panic")
+
+	if _, err := Mount(c, ctx); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := Mount(c, ctx); err == nil {
+		t.Error("err should not be nil")
+	}
 }
 
 func TestMountBadRenderTemplate(t *testing.T) {
