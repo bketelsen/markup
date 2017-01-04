@@ -30,18 +30,18 @@ func Synchronize(c Componer) (syncs []Sync, err error) {
 
 	r, err := render(c)
 	if err != nil {
-		err = errors.Newf("unable to render %T: %v\n-> %v", c, err, c.Render())
+		err = errors.Newf("unable to render %T: %v\n%v", c, err, c.Render())
 		return
 	}
 
 	new, err := stringToNode(r)
 	if err != nil {
-		err = errors.Newf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
+		err = errors.Newf("%T markup returned by Render() has a %v\n%v", c, err, r)
 		return
 	}
 
 	if new.Type != HTMLNode {
-		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
+		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n%v", c, r)
 		return
 	}
 
