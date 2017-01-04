@@ -1,9 +1,6 @@
 package markup
 
-import (
-	"github.com/murlokswarm/errors"
-	"github.com/murlokswarm/log"
-)
+import "github.com/murlokswarm/errors"
 
 const (
 	// FullSync indicates that sync should replace the full node.
@@ -28,34 +25,31 @@ type SyncScope uint8
 
 // Synchronize synchronize a whole component.
 // Compares the newer state with the live state of the component.
-func Synchronize(c Componer) (syncs []Sync) {
+func Synchronize(c Componer) (syncs []Sync, err error) {
 	live := Root(c)
 
 	r, err := render(c)
 	if err != nil {
 		err = errors.Newf("unable to render %T: %v\n-> %v", c, err, c.Render())
-		log.Error(err)
 		return
 	}
 
 	new, err := stringToNode(r)
 	if err != nil {
 		err = errors.Newf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
-		log.Error(err)
 		return
 	}
 
 	if new.Type != HTMLNode {
 		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
-		log.Error(err)
 		return
 	}
 
-	syncs, _ = syncNodes(live, new)
+	syncs, _, err = syncNodes(live, new)
 	return
 }
 
-func syncNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
+func syncNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool, err error) {
 	if live.Type != new.Type {
 		replaceNode(live, new)
 		parentShouldFullSync = true
@@ -67,10 +61,10 @@ func syncNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) 
 		parentShouldFullSync = syncTextNodes(live, new)
 
 	case ComponentNode:
-		syncs, parentShouldFullSync = syncComponentNodes(live, new)
+		syncs, parentShouldFullSync, err = syncComponentNodes(live, new)
 
 	case HTMLNode:
-		syncs, parentShouldFullSync = syncHTMLNodes(live, new)
+		syncs, parentShouldFullSync, err = syncHTMLNodes(live, new)
 	}
 	return
 }
@@ -85,9 +79,12 @@ func syncTextNodes(live *Node, new *Node) (changed bool) {
 	return
 }
 
-func syncComponentNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
+func syncComponentNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool, err error) {
 	if live.Tag != new.Tag {
-		replaceNode(live, new)
+		if err = replaceNode(live, new); err != nil {
+			return
+		}
+
 		parentShouldFullSync = true
 		return
 	}
@@ -100,13 +97,16 @@ func syncComponentNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSy
 
 	live.Attributes = new.Attributes
 	decodeAttributeMap(new.Attributes, live.Component)
-	syncs = Synchronize(live.Component)
+	syncs, err = Synchronize(live.Component)
 	return
 }
 
-func syncHTMLNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool) {
+func syncHTMLNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bool, err error) {
 	if live.Tag != new.Tag || len(live.Children) != len(new.Children) {
-		mergeHTMLNodes(live, new)
+		if err = mergeHTMLNodes(live, new); err != nil {
+			return
+		}
+
 		s := Sync{
 			Scope: FullSync,
 			Node:  live,
@@ -118,7 +118,11 @@ func syncHTMLNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bo
 	shouldFullSync := false
 
 	for i := 0; i < len(live.Children); i++ {
-		childSyncs, requireFullSync := syncNodes(live.Children[i], new.Children[i])
+		childSyncs, requireFullSync, err := syncNodes(live.Children[i], new.Children[i])
+		if err != nil {
+			return nil, false, err
+		}
+
 		if requireFullSync && !shouldFullSync {
 			shouldFullSync = true
 		}
@@ -151,7 +155,7 @@ func syncHTMLNodes(live *Node, new *Node) (syncs []Sync, parentShouldFullSync bo
 	return
 }
 
-func replaceNode(live *Node, new *Node) {
+func replaceNode(live *Node, new *Node) error {
 	if live.Type == ComponentNode {
 		Dismount(live.Component)
 	}
@@ -165,11 +169,10 @@ func replaceNode(live *Node, new *Node) {
 	for _, c := range live.Children {
 		c.Parent = live
 	}
-
-	mountNode(live, live.Mount, live.ContextID)
+	return mountNode(live, live.Mount, live.ContextID)
 }
 
-func mergeHTMLNodes(live *Node, new *Node) {
+func mergeHTMLNodes(live *Node, new *Node) error {
 	live.Tag = new.Tag
 	live.Attributes = new.Attributes
 
@@ -181,6 +184,10 @@ func mergeHTMLNodes(live *Node, new *Node) {
 
 	for _, c := range live.Children {
 		c.Parent = live
-		mountNode(c, live.Mount, live.ContextID)
+
+		if err := mountNode(c, live.Mount, live.ContextID); err != nil {
+			return err
+		}
 	}
+	return nil
 }

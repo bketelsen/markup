@@ -7,13 +7,15 @@ import (
 )
 
 type CompoSync struct {
-	TextChange      bool
-	HTMLAttrChange  bool
-	HTMLTagChange   bool
-	CompoAttrChange bool
-	CompoChange     bool
-	TypeChange      bool
-	AddRemove       bool
+	TextChange         bool
+	HTMLAttrChange     bool
+	HTMLTagChange      bool
+	HTMLTagChangeError bool
+	CompoAttrChange    bool
+	CompoChangeError   bool
+	CompoChange        bool
+	TypeChange         bool
+	AddRemove          bool
 }
 
 func (c *CompoSync) Render() string {
@@ -32,6 +34,15 @@ func (c *CompoSync) Render() string {
         <h2>Hello</h2>
     {{end}}
 
+	 <!-- HTMLTagChangeError -->
+    {{if .HTMLTagChangeError}}
+        <h1>
+			<CompoSyncError BadTemplate="true" />
+		</h1>
+    {{else}}
+        <h2>Hello</h2>
+    {{end}}
+
     <!-- CompoAttrChange -->
     <SubCompoSync Name="{{if .CompoAttrChange}}Max{{else}}Maxence{{end}}" />
 
@@ -41,6 +52,15 @@ func (c *CompoSync) Render() string {
             <SubCompoSyncBis />          
         {{else}}
             <SubCompoSync Name="Jonhzy" />
+        {{end}}
+    </div>
+
+	<!-- CompoChangeError -->
+    <div>
+        {{if .CompoChangeError}}
+            <CompoSyncError BadTemplate="true" />          
+        {{else}}
+            <SubCompoSync Name="poaa" />
         {{end}}
     </div>
 
@@ -120,7 +140,11 @@ func TestSynchronizeTextChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.TextChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -142,7 +166,11 @@ func TestSynchronizeHTMLAttrChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.HTMLAttrChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -168,7 +196,11 @@ func TestSynchronizeHTMLTagChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.HTMLTagChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -182,6 +214,20 @@ func TestSynchronizeHTMLTagChange(t *testing.T) {
 	}
 }
 
+func TestSynchronizeHTMLTagChangeError(t *testing.T) {
+	c := &CompoSync{}
+	ctx := uid.Context()
+
+	Mount(c, ctx)
+	defer Dismount(c)
+
+	c.HTMLTagChangeError = true
+
+	if _, err := Synchronize(c); err == nil {
+		t.Error("error should not be nil")
+	}
+}
+
 func TestSynchronizeCompoAttrChange(t *testing.T) {
 	c := &CompoSync{}
 	ctx := uid.Context()
@@ -190,7 +236,11 @@ func TestSynchronizeCompoAttrChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.CompoAttrChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -212,7 +262,11 @@ func TestSynchronizeCompoChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.CompoChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -226,6 +280,20 @@ func TestSynchronizeCompoChange(t *testing.T) {
 	}
 }
 
+func TestSynchronizeCompoChangeError(t *testing.T) {
+	c := &CompoSync{}
+	ctx := uid.Context()
+
+	Mount(c, ctx)
+	defer Dismount(c)
+
+	c.CompoChangeError = true
+
+	if _, err := Synchronize(c); err == nil {
+		t.Error("err should not be nil")
+	}
+}
+
 func TestSynchronizeTypeChange(t *testing.T) {
 	c := &CompoSync{}
 	ctx := uid.Context()
@@ -234,7 +302,11 @@ func TestSynchronizeTypeChange(t *testing.T) {
 	defer Dismount(c)
 
 	c.TypeChange = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -257,7 +329,11 @@ func TestAddRemove(t *testing.T) {
 
 	// Add.
 	c.AddRemove = true
-	syncs := Synchronize(c)
+
+	syncs, err := Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)
@@ -272,7 +348,11 @@ func TestAddRemove(t *testing.T) {
 
 	// Remove.
 	c.AddRemove = false
-	syncs = Synchronize(c)
+
+	syncs, err = Synchronize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if l := len(syncs); l != 1 {
 		t.Error("l should be 1:", l)

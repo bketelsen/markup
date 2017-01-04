@@ -45,7 +45,7 @@ func Register(c Componer) {
 	v := reflect.ValueOf(c)
 
 	if k := v.Kind(); k != reflect.Ptr {
-		log.Error(errors.Newf("register accepts only components of kind %v: %v", reflect.Ptr, k))
+		log.Panic(errors.Newf("register accepts only components of kind %v: %v", reflect.Ptr, k))
 	}
 
 	t := v.Type().Elem()
@@ -85,9 +85,10 @@ func Markup(c Componer) string {
 }
 
 // Mount retains a component and its underlying nodes.
-func Mount(c Componer, ctx uid.ID) (root *Node) {
+func Mount(c Componer, ctx uid.ID) (root *Node, err error) {
 	if !Registered(c) {
-		log.Panic(errors.Newf("%T is not registered", c))
+		err = errors.Newf("%T is not registered", c)
+		return
 	}
 
 	if compo, mounted := components[c]; mounted {
@@ -95,32 +96,34 @@ func Mount(c Componer, ctx uid.ID) (root *Node) {
 		// This prevents from mounting a same empty struct.
 		if t := reflect.TypeOf(c).Elem(); t.NumField() == 0 {
 			compo.Count++
-			return compo.Root
+			root = compo.Root
+			return
 		}
 
-		log.Panic(errors.Newf("%T is already mounted", c))
+		err = errors.Newf("%T is already mounted", c)
+		return
 	}
 
 	r, err := render(c)
 	if err != nil {
-		err = errors.Newf("unable to render %T: %v\n-> %v", c, err, c.Render())
-		log.Error(err)
+		err = errors.Newf("unable to render %T: %v\n%v", c, err, c.Render())
 		return
 	}
 
 	if root, err = stringToNode(r); err != nil {
-		err = errors.Newf("%T markup returned by Render() has a %v\n-> %v", c, err, r)
-		log.Error(err)
+		err = errors.Newf("%T markup returned by Render() has a %v\n%v", c, err, r)
 		return
 	}
 
 	if root.Type != HTMLNode {
-		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n-> %v", c, r)
-		log.Error(err)
+		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n%v", c, r)
 		return
 	}
 
-	mountNode(root, c, ctx)
+	if err = mountNode(root, c, ctx); err != nil {
+		return
+	}
+
 	components[c] = &component{
 		Count: 1,
 		Root:  root,
@@ -132,40 +135,49 @@ func Mount(c Componer, ctx uid.ID) (root *Node) {
 	return
 }
 
-func mountNode(n *Node, mount Componer, ctx uid.ID) {
+func mountNode(n *Node, mount Componer, ctx uid.ID) error {
 	switch n.Type {
 	case HTMLNode:
-		mountHTMLNode(n, mount, ctx)
+		return mountHTMLNode(n, mount, ctx)
 
 	case ComponentNode:
-		mountComponentNode(n, mount, ctx)
+		return mountComponentNode(n, mount, ctx)
 	}
+	return nil
 }
 
-func mountHTMLNode(n *Node, mount Componer, ctx uid.ID) {
+func mountHTMLNode(n *Node, mount Componer, ctx uid.ID) error {
 	n.ID = uid.Elem()
 	n.ContextID = ctx
 	n.Mount = mount
 	nodes[n.ID] = n
 
 	for _, c := range n.Children {
-		mountNode(c, mount, ctx)
+		if err := mountNode(c, mount, ctx); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func mountComponentNode(n *Node, mount Componer, ctx uid.ID) {
+func mountComponentNode(n *Node, mount Componer, ctx uid.ID) error {
 	n.ContextID = ctx
 	n.Mount = mount
 
 	b, registed := compoBuilders[n.Tag]
 	if !registed {
-		log.Panic(errors.Newf("%v is not registered", n.Tag))
+		return errors.Newf("%v is not registered", n.Tag)
 	}
 
 	c := b()
 	decodeAttributeMap(n.Attributes, c)
-	Mount(c, ctx)
+
+	if _, err := Mount(c, ctx); err != nil {
+		return err
+	}
+
 	n.Component = c
+	return nil
 }
 
 // Dismount dismounts a component.
