@@ -96,7 +96,7 @@ func (n *Node) markup(indent int) string {
 		b.WriteRune(' ')
 
 		if isMarkupEvent(name) {
-			b.WriteString(strings.TrimLeft(name, "_"))
+			b.WriteString(name)
 			b.WriteString(`="CallEvent('`)
 			b.WriteString(n.ID.String())
 			b.WriteString("', '")
@@ -147,7 +147,7 @@ func indentation(n int) string {
 }
 
 func isMarkupEvent(v string) bool {
-	return len(v) > 0 && v[0] == '_'
+	return strings.HasPrefix(v, "on")
 }
 
 func isComponentTag(tag string) bool {
