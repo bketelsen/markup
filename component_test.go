@@ -106,6 +106,37 @@ func TestRootNotMounted(t *testing.T) {
 	t.Error("should panic")
 }
 
+func TestID(t *testing.T) {
+	ctx := uid.Context()
+	c := &CompoEmpty{}
+	if _, err := Mount(c, ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer Dismount(c)
+
+	t.Log(ID(c))
+}
+
+func TestComponent(t *testing.T) {
+	ctx := uid.Context()
+	c := &CompoEmpty{}
+	if _, err := Mount(c, ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer Dismount(c)
+
+	id := ID(c)
+	if c2 := Component(id); c2 != c {
+		t.Error("c and c2 should be the same component")
+	}
+}
+
+func TestComponentPanic(t *testing.T) {
+	defer func() { recover() }()
+	Component(uid.ID("COMPO42"))
+	t.Error("should panic")
+}
+
 func TestMount(t *testing.T) {
 	ctx := uid.Context()
 	c := &CompoMount{}

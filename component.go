@@ -70,13 +70,28 @@ func Registered(c Componer) bool {
 	return registered
 }
 
-// Root returns the root node of c.
+// Root returns the root node of c. Panic if c is not mounted.
 func Root(c Componer) *Node {
 	compo, mounted := components[c]
 	if !mounted {
 		log.Panic(errors.Newf("%T is not mounted", c))
 	}
 	return compo.Root
+}
+
+// ID returns the id of c. Panic if c is not mounted.
+func ID(c Componer) uid.ID {
+	return Root(c).ID
+}
+
+// Component returns the component associated with id.
+// Panic if no component with id is mounted.
+func Component(id uid.ID) Componer {
+	n, mounted := nodes[id]
+	if !mounted {
+		log.Panic(errors.Newf("component with id %v is not mounted", id))
+	}
+	return n.Mount
 }
 
 // Markup returns the markup of c.
