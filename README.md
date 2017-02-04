@@ -33,7 +33,7 @@ func (c *Hello) Render() string {
 	return `
  <p>
   	Hello,
- 	<input _onchange="OnInputChange" />
+ 	<input onchange="OnInputChange" />
  	<World Name="{{.Name}}" />
  </p>
  	`
