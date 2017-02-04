@@ -12,7 +12,7 @@ type TemplateFuncMapper interface {
 	// Allows to add custom functions to the template used to render the
 	// component.
 	// Note that funcs named json and time are already implemented to handle
-	// structs as prop and time format. Overload of these will be ignored.
+	// structs as prop and time format. Overloads of these will be ignored.
 	// See https://golang.org/pkg/text/template/#Template.Funcs for more details.
 	FuncMaps() template.FuncMap
 }
