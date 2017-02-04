@@ -9,7 +9,7 @@ const (
 	fooXML = `
 <div>
     <h1>Hello</h1>
-    <input type="text" _onchange="OnChange" />
+    <input type="text" onchange="OnChange" />
     <button type="button">Click Me!</button>
 	<!-- Write your comments here -->
 	<Bar />
