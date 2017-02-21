@@ -2,7 +2,6 @@ package markup
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -11,15 +10,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type changeArg struct {
-	Value string
-}
-
-func HandleHTMLEvent(nodeID uid.ID, name string, argJSON string) {
-	var err error
-
+// HandleEvent is a helper function to handle events.
+// If name designates a component method, the method will be called with argJSON
+// unmarshaled into the first arg.
+// If name designates a component field, argJSON "Value" field will be directly
+// mapped in the component field.
+func HandleEvent(nodeID uid.ID, name string, argJSON string) {
 	if len(name) == 0 {
-		return
+		log.Panic("no handler")
 	}
 
 	n, mounted := nodes[nodeID]
@@ -32,34 +30,36 @@ func HandleHTMLEvent(nodeID uid.ID, name string, argJSON string) {
 	v := reflect.ValueOf(c)
 
 	if m := v.MethodByName(name); m.IsValid() {
-		t := m.Type()
-		target := fmt.Sprintf("%v.%v", t.Name(), name)
-		callComponentMethod(target, m, argJSON)
-		return
-	}
-
-	if f := v.FieldByName(name); f.IsValid() {
-		if f, err = getFieldValue(f, strings.Split(name, ".")); err != nil {
-			err = errors.Wrapf(err, "unable to map %v", name)
-			log.Error(err)
-			return
-		}
-
-		if err = mapComponentField(f, argJSON); err != nil {
-			err = errors.Wrapf(err, "unable to map %v", name)
+		if err := callComponentMethod(m, argJSON); err != nil {
+			err = errors.Wrapf(err, "unable to call %v", name)
 			log.Error(err)
 		}
 		return
 	}
 
-	log.Warnf("%T doesn't have a method or a field named %v", c, name)
+	pv, err := getPipedValue(v, strings.Split(name, "."))
+	if err != nil {
+		log.Errorf("unable to map %v: %v", name, err)
+		return
+	}
+
+	if err = mapPipedValue(pv, argJSON); err != nil {
+		log.Errorf("unable to map %v: %v", name, err)
+		return
+	}
 }
 
-func callComponentMethod(target string, m reflect.Value, argJSON string) {
+func callComponentMethod(m reflect.Value, argJSON string) error {
 	t := m.Type()
-	if t.NumIn() == 0 {
+	numIn := t.NumIn()
+
+	if numIn > 1 {
+		return errors.Errorf("func has more than 1 arg: %v", numIn)
+	}
+
+	if numIn == 0 {
 		m.Call([]reflect.Value{})
-		return
+		return nil
 	}
 
 	argt := t.In(0)
@@ -68,87 +68,97 @@ func callComponentMethod(target string, m reflect.Value, argJSON string) {
 	arg := argv.Elem()
 
 	if err := json.Unmarshal([]byte(argJSON), argi); err != nil {
-		log.Error(errors.Wrapf(err, "callComponentMethod for %v", target))
-		return
+		return errors.Wrapf(err, "unmarshal %v failed", argJSON)
 	}
 
 	m.Call([]reflect.Value{arg})
-
-	if t.NumIn() > 1 {
-		log.Warnf("%v should have only 1 argument", target)
-	}
+	return nil
 }
 
-func getFieldValue(f reflect.Value, pipeline []string) (v reflect.Value, err error) {
-	if len(pipeline) == 1 {
-		v = f
+func getPipedValue(v reflect.Value, pipeline []string) (rv reflect.Value, err error) {
+	if len(pipeline) == 0 {
+		rv = v
+		return
+	}
+	if len(pipeline[0]) == 0 {
+		err = errors.New("pipeline element can't be empty")
 		return
 	}
 
-	switch k := f.Kind(); k {
+	switch k := v.Kind(); k {
 	case reflect.Ptr:
-		if f.IsNil() {
-			newv := reflect.New(f.Type().Elem())
-			f.Set(newv)
-		}
-		return getFieldValue(f, pipeline)
+		return getPipedPtrValue(v, pipeline)
 
 	case reflect.Struct:
-		f := f.FieldByName(pipeline[1])
-		if !f.IsValid() {
-			err = errors.Errorf("no field named %v in %v", pipeline[1], pipeline[0])
-			return
-		}
-		return getFieldValue(f, pipeline[1:])
+		return getPipedStructFieldValue(v, pipeline)
 
 	case reflect.Map:
-		mapt := f.Type()
-		if keyk := mapt.Key().Kind(); keyk != reflect.String {
-			err = errors.Errorf("%v key type must be a %v: %v",
-				pipeline[0],
-				reflect.String,
-				keyk)
-			return
-		}
-
-		if f.IsNil() {
-			newv := reflect.MakeMap(mapt)
-			f.Set(newv)
-		}
-
-		mapvv := reflect.Zero(mapt.Elem())
-		f.SetMapIndex(reflect.ValueOf(pipeline[1]), mapvv)
-		return getFieldValue(f, pipeline[1:])
+		return getPipedMapValue(v, pipeline)
 
 	default:
-		err = errors.Errorf("%v must be a %v or a %v: %v",
+		err = errors.Errorf("%v is not a valid pipeline source", k)
+	}
+	return
+}
+
+func getPipedPtrValue(v reflect.Value, pipeline []string) (rv reflect.Value, err error) {
+	if v.IsNil() {
+		t := v.Type()
+		nv := reflect.New(t.Elem())
+		v.Set(nv)
+	}
+	return getPipedValue(v.Elem(), pipeline)
+}
+
+func getPipedStructFieldValue(v reflect.Value, pipeline []string) (rv reflect.Value, err error) {
+	fv := v.FieldByName(pipeline[0])
+	if !fv.IsValid() {
+		err = errors.Errorf("no field named %v", pipeline[0])
+		return
+	}
+	return getPipedValue(fv, pipeline[1:])
+}
+
+func getPipedMapValue(v reflect.Value, pipeline []string) (rv reflect.Value, err error) {
+	t := v.Type()
+	kt := t.Key()
+	if k := kt.Kind(); k != reflect.String {
+		err = errors.Errorf("%v key type must be a %v: %v",
 			pipeline[0],
-			reflect.Struct,
-			reflect.Map,
+			reflect.String,
 			k)
 		return
 	}
-}
 
-func mapComponentField(f reflect.Value, argJSON string) error {
-	var arg changeArg
-	if err := json.Unmarshal([]byte(argJSON), &arg); err != nil {
-		return errors.Wrapf(err, "unable to unmarshal %v", argJSON)
+	if v.IsNil() {
+		nv := reflect.MakeMap(t)
+		v.Set(nv)
 	}
 
-	if f.Kind() == reflect.String {
-		f.SetString(arg.Value)
+	kv := reflect.ValueOf(pipeline[0])
+	vv := reflect.Zero(t.Elem())
+	v.SetMapIndex(kv, vv)
+	return getPipedValue(vv, pipeline[1:])
+}
+
+func mapPipedValue(v reflect.Value, argJSON string) error {
+	var arg struct {
+		Value string
+	}
+	if err := json.Unmarshal([]byte(argJSON), &arg); err != nil {
+		return errors.Wrapf(err, "unmarshal %v failed", argJSON)
+	}
+
+	if v.Kind() == reflect.String {
+		v.SetString(arg.Value)
 		return nil
 	}
 
-	ft := f.Type()
-	fpv := reflect.New(ft)
-	fpi := fpv.Interface()
-
-	if err := json.Unmarshal([]byte(arg.Value), fpi); err != nil {
-		return errors.Wrapf(err, "unable to unmarshal %v", arg.Value)
+	pv := reflect.New(v.Type())
+	pi := pv.Interface()
+	if err := json.Unmarshal([]byte(arg.Value), pi); err != nil {
+		return errors.Wrapf(err, "unmarshal %v failed", arg.Value)
 	}
-
-	f.Set(fpv.Elem())
+	v.Set(pv.Elem())
 	return nil
 }
