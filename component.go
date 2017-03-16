@@ -84,6 +84,17 @@ func ID(c Componer) uid.ID {
 	return Root(c).ID
 }
 
+// New creates the component named tag.
+func New(tag string) (c Componer, err error) {
+	b, registered := compoBuilders[tag]
+	if !registered {
+		err = errors.Newf("no component named %v is registered", tag)
+		return
+	}
+	c = b()
+	return
+}
+
 // Component returns the component associated with id.
 // Panic if no component with id is mounted.
 func Component(id uid.ID) Componer {
@@ -179,15 +190,14 @@ func mountComponentNode(n *Node, mount Componer, ctx uid.ID) error {
 	n.ContextID = ctx
 	n.Mount = mount
 
-	b, registered := compoBuilders[n.Tag]
-	if !registered {
-		return errors.Newf("%v is not registered", n.Tag)
+	c, err := New(n.Tag)
+	if err != nil {
+		return err
 	}
 
-	c := b()
 	decodeAttributeMap(n.Attributes, c)
 
-	if _, err := Mount(c, ctx); err != nil {
+	if _, err = Mount(c, ctx); err != nil {
 		return err
 	}
 
