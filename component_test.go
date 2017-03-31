@@ -3,7 +3,7 @@ package markup
 import (
 	"testing"
 
-	"github.com/murlokswarm/uid"
+	"github.com/satori/go.uuid"
 )
 
 type CompoMount struct {
@@ -107,7 +107,7 @@ func TestRootNotMounted(t *testing.T) {
 }
 
 func TestID(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoEmpty{}
 	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestID(t *testing.T) {
 }
 
 func TestComponent(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoEmpty{}
 	if _, err := Mount(c, ctx); err != nil {
 		t.Fatal(err)
@@ -133,12 +133,12 @@ func TestComponent(t *testing.T) {
 
 func TestComponentPanic(t *testing.T) {
 	defer func() { recover() }()
-	Component(uid.ID("COMPO42"))
+	Component(uuid.NewV1())
 	t.Error("should panic")
 }
 
 func TestMount(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoMount{}
 
 	root, err := Mount(c, ctx)
@@ -180,7 +180,7 @@ func TestMount(t *testing.T) {
 }
 
 func TestMountNotRegistered(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoNotRegistered{}
 
 	if _, err := Mount(c, ctx); err == nil {
@@ -189,7 +189,7 @@ func TestMountNotRegistered(t *testing.T) {
 }
 
 func TestMountEmbedsNotRegistered(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoMount{EmbedsNonRegistered: true}
 
 	if _, err := Mount(c, ctx); err == nil {
@@ -198,7 +198,7 @@ func TestMountEmbedsNotRegistered(t *testing.T) {
 }
 
 func TestMountEmbedsBadMarkup(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoMount{EmbedsBadMarkup: true}
 
 	if _, err := Mount(c, ctx); err == nil {
@@ -207,7 +207,7 @@ func TestMountEmbedsBadMarkup(t *testing.T) {
 }
 
 func TestMountAlreadyMounted(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoMount{}
 
 	if _, err := Mount(c, ctx); err != nil {
@@ -220,19 +220,19 @@ func TestMountAlreadyMounted(t *testing.T) {
 }
 
 func TestMountBadRenderTemplate(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoBadRenderTemplate{}
 	Mount(c, ctx)
 }
 
 func TestMountBadMarkup(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoBadMarkup{}
 	Mount(c, ctx)
 }
 
 func TestMountBadRoot(t *testing.T) {
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 	c := &CompoBadRoot{}
 	Mount(c, ctx)
 }

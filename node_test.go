@@ -3,12 +3,12 @@ package markup
 import (
 	"testing"
 
-	"github.com/murlokswarm/uid"
+	"github.com/satori/go.uuid"
 )
 
 func TestNodeString(t *testing.T) {
 	t.Log(Node{
-		ID:  uid.Elem(),
+		ID:  uuid.NewV1(),
 		Tag: "div",
 	})
 }

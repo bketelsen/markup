@@ -6,7 +6,7 @@ import (
 	"html"
 	"strings"
 
-	"github.com/murlokswarm/uid"
+	"github.com/satori/go.uuid"
 )
 
 // Enumeration of the node types.
@@ -36,8 +36,8 @@ var (
 
 // Node represents a markup node.
 type Node struct {
-	ID         uid.ID
-	ContextID  uid.ID
+	ID         uuid.UUID
+	ContextID  uuid.UUID
 	Type       NodeType
 	Tag        string
 	Text       string

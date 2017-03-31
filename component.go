@@ -3,15 +3,15 @@ package markup
 import (
 	"reflect"
 
-	"github.com/murlokswarm/errors"
 	"github.com/murlokswarm/log"
-	"github.com/murlokswarm/uid"
+	"github.com/pkg/errors"
+	"github.com/satori/go.uuid"
 )
 
 var (
 	compoBuilders = map[string]func() Componer{}
 	components    = map[Componer]*component{}
-	nodes         = map[uid.ID]*Node{}
+	nodes         = map[uuid.UUID]*Node{}
 )
 
 // Componer is the interface that describes a component.
@@ -45,14 +45,14 @@ func Register(c Componer) {
 	v := reflect.ValueOf(c)
 
 	if k := v.Kind(); k != reflect.Ptr {
-		log.Panic(errors.Newf("register accepts only components of kind %v: %v", reflect.Ptr, k))
+		log.Panic(errors.Errorf("register accepts only components of kind %v: %v", reflect.Ptr, k))
 	}
 
 	t := v.Type().Elem()
 	tag := t.Name()
 
 	if !isComponentTag(tag) {
-		log.Panic(errors.Newf("non exported components cannot be registered: %v", t))
+		log.Panic(errors.Errorf("non exported components cannot be registered: %v", t))
 	}
 
 	compoBuilders[tag] = func() Componer {
@@ -74,13 +74,13 @@ func Registered(c Componer) bool {
 func Root(c Componer) *Node {
 	compo, mounted := components[c]
 	if !mounted {
-		log.Panic(errors.Newf("%T is not mounted", c))
+		log.Panic(errors.Errorf("%T is not mounted", c))
 	}
 	return compo.Root
 }
 
 // ID returns the id of c. Panic if c is not mounted.
-func ID(c Componer) uid.ID {
+func ID(c Componer) uuid.UUID {
 	return Root(c).ID
 }
 
@@ -88,7 +88,7 @@ func ID(c Componer) uid.ID {
 func New(tag string) (c Componer, err error) {
 	b, registered := compoBuilders[tag]
 	if !registered {
-		err = errors.Newf("no component named %v is registered", tag)
+		err = errors.Errorf("no component named %v is registered", tag)
 		return
 	}
 	c = b()
@@ -97,10 +97,10 @@ func New(tag string) (c Componer, err error) {
 
 // Component returns the component associated with id.
 // Panic if no component with id is mounted.
-func Component(id uid.ID) Componer {
+func Component(id uuid.UUID) Componer {
 	n, mounted := nodes[id]
 	if !mounted {
-		log.Panic(errors.Newf("component with id %v is not mounted", id))
+		log.Panic(errors.Errorf("component with id %v is not mounted", id))
 	}
 	return n.Mount
 }
@@ -111,9 +111,9 @@ func Markup(c Componer) string {
 }
 
 // Mount retains a component and its underlying nodes.
-func Mount(c Componer, ctx uid.ID) (root *Node, err error) {
+func Mount(c Componer, ctx uuid.UUID) (root *Node, err error) {
 	if !Registered(c) {
-		err = errors.Newf("%T is not registered", c)
+		err = errors.Errorf("%T is not registered", c)
 		return
 	}
 
@@ -126,23 +126,23 @@ func Mount(c Componer, ctx uid.ID) (root *Node, err error) {
 			return
 		}
 
-		err = errors.Newf("%T is already mounted", c)
+		err = errors.Errorf("%T is already mounted", c)
 		return
 	}
 
 	r, err := render(c)
 	if err != nil {
-		err = errors.Newf("unable to render %T: %v\n%v", c, err, c.Render())
+		err = errors.Errorf("unable to render %T: %v\n%v", c, err, c.Render())
 		return
 	}
 
 	if root, err = stringToNode(r); err != nil {
-		err = errors.Newf("%T markup returned by Render() has a %v\n%v", c, err, r)
+		err = errors.Errorf("%T markup returned by Render() has a %v\n%v", c, err, r)
 		return
 	}
 
 	if root.Type != HTMLNode {
-		err = errors.Newf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n%v", c, r)
+		err = errors.Errorf("%T markup returned by Render() has a syntax error: root node is not a HTMLNode\n%v", c, r)
 		return
 	}
 
@@ -161,7 +161,7 @@ func Mount(c Componer, ctx uid.ID) (root *Node, err error) {
 	return
 }
 
-func mountNode(n *Node, mount Componer, ctx uid.ID) error {
+func mountNode(n *Node, mount Componer, ctx uuid.UUID) error {
 	switch n.Type {
 	case HTMLNode:
 		return mountHTMLNode(n, mount, ctx)
@@ -172,8 +172,8 @@ func mountNode(n *Node, mount Componer, ctx uid.ID) error {
 	return nil
 }
 
-func mountHTMLNode(n *Node, mount Componer, ctx uid.ID) error {
-	n.ID = uid.Elem()
+func mountHTMLNode(n *Node, mount Componer, ctx uuid.UUID) error {
+	n.ID = uuid.NewV1()
 	n.ContextID = ctx
 	n.Mount = mount
 	nodes[n.ID] = n
@@ -186,7 +186,7 @@ func mountHTMLNode(n *Node, mount Componer, ctx uid.ID) error {
 	return nil
 }
 
-func mountComponentNode(n *Node, mount Componer, ctx uid.ID) error {
+func mountComponentNode(n *Node, mount Componer, ctx uuid.UUID) error {
 	n.ContextID = ctx
 	n.Mount = mount
 
