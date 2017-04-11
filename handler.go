@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/murlokswarm/log"
-	"github.com/murlokswarm/uid"
 	"github.com/pkg/errors"
+	"github.com/satori/go.uuid"
 )
 
 // HandleEvent is a helper function to handle events.
@@ -15,7 +15,7 @@ import (
 // unmarshaled into the first arg.
 // If name designates a component field, argJSON "Value" field will be directly
 // mapped in the component field.
-func HandleEvent(nodeID uid.ID, name string, argJSON string) {
+func HandleEvent(nodeID uuid.UUID, name string, argJSON string) {
 	if len(name) == 0 {
 		log.Panic("no handler")
 	}

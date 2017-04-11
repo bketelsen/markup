@@ -3,7 +3,7 @@ package markup
 import (
 	"testing"
 
-	"github.com/murlokswarm/uid"
+	"github.com/satori/go.uuid"
 )
 
 type CompoSync struct {
@@ -134,7 +134,7 @@ func init() {
 
 func TestSynchronizeTextChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -160,7 +160,7 @@ func TestSynchronizeTextChange(t *testing.T) {
 
 func TestSynchronizeHTMLAttrChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -190,7 +190,7 @@ func TestSynchronizeHTMLAttrChange(t *testing.T) {
 
 func TestSynchronizeHTMLTagChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -216,7 +216,7 @@ func TestSynchronizeHTMLTagChange(t *testing.T) {
 
 func TestSynchronizeHTMLTagChangeError(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -230,7 +230,7 @@ func TestSynchronizeHTMLTagChangeError(t *testing.T) {
 
 func TestSynchronizeCompoAttrChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -256,7 +256,7 @@ func TestSynchronizeCompoAttrChange(t *testing.T) {
 
 func TestSynchronizeCompoChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -282,7 +282,7 @@ func TestSynchronizeCompoChange(t *testing.T) {
 
 func TestSynchronizeCompoChangeError(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -296,7 +296,7 @@ func TestSynchronizeCompoChangeError(t *testing.T) {
 
 func TestSynchronizeTypeChange(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -322,7 +322,7 @@ func TestSynchronizeTypeChange(t *testing.T) {
 
 func TestAddRemove(t *testing.T) {
 	c := &CompoSync{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -368,7 +368,7 @@ func TestAddRemove(t *testing.T) {
 
 func TestSynchronizeBadTemplate(t *testing.T) {
 	c := &CompoSyncError{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -379,7 +379,7 @@ func TestSynchronizeBadTemplate(t *testing.T) {
 
 func TestSynchronizeBadRoot(t *testing.T) {
 	c := &CompoSyncError{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)
@@ -390,7 +390,7 @@ func TestSynchronizeBadRoot(t *testing.T) {
 
 func TestSynchronizeBadMarkup(t *testing.T) {
 	c := &CompoSyncError{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	Mount(c, ctx)
 	defer Dismount(c)

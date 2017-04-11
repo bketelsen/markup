@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/murlokswarm/uid"
+	"github.com/satori/go.uuid"
 )
 
 type FuncArg struct {
@@ -202,7 +202,7 @@ func TestMapPipedValueErrors(t *testing.T) {
 
 func TestHandleEvent(t *testing.T) {
 	c := &HandlerCompo{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	root, err := Mount(c, ctx)
 	if err != nil {
@@ -242,7 +242,7 @@ func TestHandleEventPanic(t *testing.T) {
 	defer func() { recover() }()
 
 	c := &HandlerCompo{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	root, err := Mount(c, ctx)
 	if err != nil {
@@ -257,10 +257,10 @@ func TestHandleEventPanic(t *testing.T) {
 
 func TestHandleEventError(t *testing.T) {
 	c := &HandlerCompo{}
-	ctx := uid.Context()
+	ctx := uuid.NewV1()
 
 	// Not mounted.
-	HandleEvent("root.ID", "HandlerWitMultipleArg", "")
+	HandleEvent(uuid.NewV1(), "HandlerWitMultipleArg", "")
 
 	root, err := Mount(c, ctx)
 	if err != nil {
